@@ -892,7 +892,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var n,r,i,a,
 const GRADES = ["5","4","3","2","2-RP","2-RF","1","1-RP","1-RF","N/A"];
 const BELOW = new Set(["3","2","2-RP","2-RF","1","1-RP","1-RF"]);
 /* ---- document version (bump on each update) ---- */
-const VERSION = "2026.07.38";
+const VERSION = "2026.07.39";
 const VERSION_DATE = "2026-07-10";
 /* ---- data models ---- */
 // rows present per exercise, in AIMS/PF then PM order
@@ -2050,6 +2050,13 @@ function naColumn(table,ci,ev,reason){
   const sheet=table.closest('.sheet');
   if(sheet && sheet._events){ buildJustifications(sheet, sheet._ex, sheet._events); renderFinals(sheet, sheet._ex); updateNotifyBtn(); }
 }
+function resetColumn(table,ci){
+  const boxes=table.querySelectorAll('td[data-col="'+ci+'"] .box[data-k]');
+  boxes.forEach(b=>{ const k=b.dataset.k; state[k]="4"; paint(b,"4"); });
+  const pfpk=(RUN===1)?"pf1st":"pf2nd", pmpk=(RUN===1)?"pf2nd":"pf1st"; incReason[EX+"|"+pfpk]=""; incReason[EX+"|"+pmpk]="";
+  const sheet=table.closest('.sheet');
+  if(sheet && sheet._events){ buildJustifications(sheet, sheet._ex, sheet._events); renderFinals(sheet, sheet._ex); updateNotifyBtn(); }
+}
 function openColMenu(table,ci,ev){
   const wrap=document.createElement("div");
   const q=document.createElement("div"); q.className="cm-q";
@@ -2061,7 +2068,7 @@ function openColMenu(table,ci,ev){
   row.appendChild(mk("Illness","illness"));
   row.appendChild(mk("Could not complete in allotted time","time"));
   wrap.appendChild(row);
-  showModal("Column options — "+ev.code, wrap, [{label:"Release highlight",onClick:()=>{ releaseCol(table); closeModal(); }},{label:"Cancel",onClick:closeModal}]);
+  showModal("Column options — "+ev.code, wrap, [{label:"Reset to Standard",onClick:()=>{ resetColumn(table,ci); closeModal(); }},{label:"Release highlight",onClick:()=>{ releaseCol(table); closeModal(); }},{label:"Cancel",onClick:closeModal}]);
 }
 /* ---- AIMS page ---- */
 function buildAIMS(){
@@ -2222,6 +2229,7 @@ function toast(msg){ let t=document.getElementById("toast"); if(!t){ t=document.
 /* generic modal */
 function closeModal(){ document.querySelectorAll(".mo-overlay").forEach(o=>o.remove()); }
 const CHANGELOG=[
+ {v:"2026.07.39",date:"2026-07-10",notes:["Column options now include ‘Reset to Standard’ — sets an entire column back to grade 4 and clears any Incomplete reason for that run."]},
  {v:"2026.07.38",date:"2026-07-10",notes:["Incomplete reasons: added Illness and ‘Unable to complete in allotted time’ (pick one) alongside Simulator malfunction.","Double-tap a column header to mark the whole column N/A for the current run, with a reason.","Added this clickable Revision history next to the version number.","Final-grade reason buttons now line up on their own rows on the iPad.","Added a ‘Check for updates’ button at the top — refreshes to the newest version without closing the app (your work in progress is kept).","In-app Help and the instructor manual updated for these features."]},
  {v:"2026.07.33",date:"2026-07-08",notes:["Repeat-event email: one message to the three offices with the next-instructor note, the Training Records notice, and Copy subject / Copy body."]},
  {v:"2026.07.30",date:"2026-07-08",notes:["Profile time axis now shows correctly on first open."]},
