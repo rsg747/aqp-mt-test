@@ -434,6 +434,20 @@
   .em-meta{font-size:12px;color:#37424f;margin:0 0 6px;line-height:1.5}
   .em-lbl{font-weight:700;color:#1e3a5f}
   .em-hint{font-size:12px;color:#5a5030;background:#fbf7ec;border:1px solid #ecdcae;border-radius:8px;padding:8px 10px;margin-bottom:12px;font-weight:600}
+  .fl-grp{display:inline-flex;align-items:center;gap:8px;flex-wrap:wrap;margin-right:14px}
+  .fl-reason{display:inline-flex;gap:4px;flex-wrap:wrap}
+  .fl-rbtn{font:600 11px -apple-system,Arial,sans-serif;padding:3px 9px;border:1px solid #c9d2de;border-radius:20px;background:#fff;color:#5b6572;cursor:pointer}
+  .fl-rbtn.on{background:#d63c30;border-color:#b83227;color:#fff}
+  .fl-rbtn.auto{border-style:dashed;border-color:#d19a2a;color:#a3701a}
+  .cm-q{font-size:14px;margin-bottom:12px;color:#25303f;line-height:1.4}
+  .cm-row{display:flex;flex-direction:column;gap:9px}
+  .cm-btn{font:700 14px -apple-system,Arial,sans-serif;padding:13px 14px;border:1px solid #c9d2de;border-radius:10px;background:#f4f7fb;color:#16273f;cursor:pointer;text-align:left}
+  .cm-btn:active{background:#e6edf7}
+  .revlink{color:#F2C14E;font-weight:700;font-size:12px;text-decoration:underline;cursor:pointer;margin-right:12px}
+  .rev-item{margin:0 0 12px;padding:0 0 10px;border-bottom:1px solid #eef2f7}
+  .rev-v{font-weight:800;color:#16273f;font-size:14px}
+  .rev-d{font-weight:600;color:#8a97a8;font-size:12px;margin-left:8px}
+  .rev-ul{margin:6px 0 0 18px;padding:0;color:#37424f;font-size:13px;line-height:1.5}
 </style>
 </head>
 <body class="run1">
@@ -878,8 +892,8 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var n,r,i,a,
 const GRADES = ["5","4","3","2","2-RP","2-RF","1","1-RP","1-RF","N/A"];
 const BELOW = new Set(["3","2","2-RP","2-RF","1","1-RP","1-RF"]);
 /* ---- document version (bump on each update) ---- */
-const VERSION = "2026.07.33";
-const VERSION_DATE = "2026-07-08";
+const VERSION = "2026.07.35";
+const VERSION_DATE = "2026-07-10";
 /* ---- data models ---- */
 // rows present per exercise, in AIMS/PF then PM order
 const MT_EVENTS = [
@@ -2016,14 +2030,38 @@ function openGradePicker(box, k, ex, ev, role, run, sheet){
 let hotCol={MT:null};
 function toggleCol(table,ci,ev){
   const cur=hotCol[EX];
-  const setTo = (cur===ci)?null:ci;
-  hotCol[EX]=setTo;
-  table.querySelectorAll('[data-col]').forEach(el=>{
-    el.classList.toggle('col-hot', setTo!==null && +el.dataset.col===setTo);
-  });
+  if(cur===ci){ openColMenu(table,ci,ev); return; }
+  hotCol[EX]=ci;
+  table.querySelectorAll('[data-col]').forEach(el=>{ el.classList.toggle('col-hot', +el.dataset.col===ci); });
   const note=table.closest('.sheet').querySelector('[data-note]');
-  if(setTo===null){ note.innerHTML="Tap an event header to lock its column as the active grade line."; }
-  else{ note.innerHTML=`Active grade line: <b>${ev.code} — ${ev.nm}</b> · tap the header again to release.`; }
+  if(note) note.innerHTML=`Active grade line: <b>${ev.code} — ${ev.nm}</b> · tap the header again for column options.`;
+}
+function releaseCol(table){
+  hotCol[EX]=null;
+  table.querySelectorAll('[data-col]').forEach(el=>el.classList.remove('col-hot'));
+  const note=table.closest('.sheet').querySelector('[data-note]');
+  if(note) note.innerHTML="Tap an event header to lock its column as the active grade line.";
+}
+function naColumn(table,ci,ev,reason){
+  const boxes=table.querySelectorAll('td[data-col="'+ci+'"] .box[data-k]');
+  boxes.forEach(b=>{ const k=b.dataset.k; state[k]="N/A"; paint(b,"N/A"); });
+  const pfpk=(RUN===1)?"pf1st":"pf2nd", pmpk=(RUN===1)?"pf2nd":"pf1st";
+  incReason[EX+"|"+pfpk]=reason; incReason[EX+"|"+pmpk]=reason;
+  const sheet=table.closest('.sheet');
+  if(sheet && sheet._events){ buildJustifications(sheet, sheet._ex, sheet._events); renderFinals(sheet, sheet._ex); updateNotifyBtn(); }
+}
+function openColMenu(table,ci,ev){
+  const wrap=document.createElement("div");
+  const q=document.createElement("div"); q.className="cm-q";
+  q.innerHTML=`Mark the entire <b>${esc(ev.code)} — ${esc(ev.nm)}</b> column <b>N/A</b> for this run? Choose the reason:`;
+  wrap.appendChild(q);
+  const row=document.createElement("div"); row.className="cm-row";
+  const mk=(txt,reason)=>{ const b=document.createElement("button"); b.type="button"; b.className="cm-btn"; b.textContent=txt; b.onclick=()=>{ naColumn(table,ci,ev,reason); closeModal(); }; return b; };
+  row.appendChild(mk("Simulator malfunction","sim"));
+  row.appendChild(mk("Illness","illness"));
+  row.appendChild(mk("Could not complete in allotted time","time"));
+  wrap.appendChild(row);
+  showModal("Column options — "+ev.code, wrap, [{label:"Release highlight",onClick:()=>{ releaseCol(table); closeModal(); }},{label:"Cancel",onClick:closeModal}]);
 }
 /* ---- AIMS page ---- */
 function buildAIMS(){
@@ -2104,7 +2142,7 @@ function aimsStudent(sn,ex,events){
   // Which run supplies each block for this person:
   //  PF-1st flies PF in Run 1, PM in Run 2 ; PF-2nd flies PF in Run 2, PM in Run 1
   const _f=finalGrade(ex,pkey);
-  s.querySelector(".bar").insertAdjacentHTML("beforeend", `<span class="fl-chip fl-${_f.cls}" style="margin-left:auto">Final: ${esc(_f.label)}${_f.sim?" (sim)":""}</span>`);
+  s.querySelector(".bar").insertAdjacentHTML("beforeend", `<span class="fl-chip fl-${_f.cls}" style="margin-left:auto">Final: ${esc(_f.label)}${_f.reasonLabel?" — "+esc(_f.reasonLabel):""}</span>`);
   const pfRun = pkey==="pf1st" ? 1 : 2;
   const pmRun = pkey==="pf1st" ? 2 : 1;
   s.querySelector(".bar").insertAdjacentHTML("beforeend", `<span class="fl-chip fl-na" style="margin-left:8px">PF ${esc(seatFull(pfRun,pkey))} \u00b7 PM ${esc(seatFull(pmRun,pkey))}</span>`);
@@ -2162,7 +2200,7 @@ function snapshot(){
   const t={}; for(const k in timers){ const T=timers[k]; t[k]= T.running ? (T.elapsedMs+(Date.now()-T.startMs)) : T.elapsedMs; }
   return { ver:VERSION, savedAt:new Date().toISOString(),
     state:{...state}, justCell:JSON.parse(JSON.stringify(justCell)),
-    person:JSON.parse(JSON.stringify(person)), duty:{...duty}, sessionDate, timers:t, simFail:{...simFail}, ssNotes:JSON.parse(JSON.stringify(ssNotes)), instructor:{...instructor}, take:{...take} };
+    person:JSON.parse(JSON.stringify(person)), duty:{...duty}, sessionDate, timers:t, incReason:{...incReason}, ssNotes:JSON.parse(JSON.stringify(ssNotes)), instructor:{...instructor}, take:{...take} };
 }
 function applySnapshot(s){
   if(!s) return;
@@ -2171,7 +2209,7 @@ function applySnapshot(s){
   if(s.person){ ["pf1st","pf2nd"].forEach(p=>{ person[p].name=(s.person[p]&&s.person[p].name)||""; person[p].emp=(s.person[p]&&s.person[p].emp)||""; }); }
   if(s.duty){ duty.pf1st=s.duty.pf1st||duty.pf1st; duty.pf2nd=s.duty.pf2nd||duty.pf2nd; }
   sessionDate = s.sessionDate||"";
-  clearObj(simFail); if(s.simFail) Object.assign(simFail, s.simFail);
+  clearObj(incReason); if(s.incReason) Object.assign(incReason, s.incReason); else if(s.simFail){ Object.keys(s.simFail).forEach(k=>{ if(s.simFail[k]) incReason[k]="sim"; }); }
   clearObj(ssNotes); if(s.ssNotes) Object.assign(ssNotes, s.ssNotes);
   if(s.instructor){ instructor.name=s.instructor.name||""; instructor.emp=s.instructor.emp||""; } if(s.take){ take.pf1st=s.take.pf1st||"1"; take.pf2nd=s.take.pf2nd||"1"; }
   clearObj(timers);
@@ -2183,6 +2221,24 @@ function autosave(){ lsSet(AUTOSAVE_KEY, snapshot()); }
 function toast(msg){ let t=document.getElementById("toast"); if(!t){ t=document.createElement("div"); t.id="toast"; document.body.appendChild(t); } t.textContent=msg; t.classList.add("show"); clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove("show"),2600); }
 /* generic modal */
 function closeModal(){ document.querySelectorAll(".mo-overlay").forEach(o=>o.remove()); }
+const CHANGELOG=[
+ {v:"2026.07.35",date:"2026-07-10",notes:["Incomplete reasons: added Illness and ‘Unable to complete in allotted time’ (pick one) alongside Simulator malfunction.","Double-tap a column header to mark the whole column N/A for the current run, with a reason.","Added this clickable Revision history next to the version number."]},
+ {v:"2026.07.33",date:"2026-07-08",notes:["Repeat-event email: one message to the three offices with the next-instructor note, the Training Records notice, and Copy subject / Copy body."]},
+ {v:"2026.07.30",date:"2026-07-08",notes:["Profile time axis now shows correctly on first open."]},
+ {v:"2026.07.26",date:"2026-07-07",notes:["Per-crewmember Take number; wider name and employee-number fields; date picker defaults to today."]},
+ {v:"2026.07.20",date:"2026-07-06",notes:["Automatic AIMS-to-TVER final grade; automatic seat-position capture; Seat Support internal notes."]}
+];
+function openRevisions(){
+  const wrap=document.createElement("div");
+  CHANGELOG.forEach(c=>{
+    const d=document.createElement("div"); d.className="rev-item";
+    d.innerHTML=`<div class="rev-v">${esc(c.v)}<span class="rev-d">${esc(c.date)}</span></div>`;
+    const ul=document.createElement("ul"); ul.className="rev-ul";
+    c.notes.forEach(n=>{ const li=document.createElement("li"); li.textContent=n; ul.appendChild(li); });
+    d.appendChild(ul); wrap.appendChild(d);
+  });
+  showModal("Revision history", wrap, [{label:"Close",onClick:closeModal}]);
+}
 function showModal(title, contentNode, buttons){
   closeModal();
   const ov=document.createElement("div"); ov.className="mo-overlay";
@@ -2244,7 +2300,7 @@ function doNew(){
   clearObj(state); clearObj(justCell);
   person.pf1st.name=""; person.pf1st.emp=""; person.pf2nd.name=""; person.pf2nd.emp="";
   duty.pf1st="CA"; duty.pf2nd="FO"; sessionDate=todayISO();
-  clearObj(timers); clearObj(simFail); clearObj(ssNotes); instructor.name=""; instructor.emp=""; take.pf1st="1"; take.pf2nd="1"; RUN=1; EX="MT";
+  clearObj(timers); clearObj(incReason); clearObj(ssNotes); instructor.name=""; instructor.emp=""; take.pf1st="1"; take.pf2nd="1"; RUN=1; EX="MT";
   document.querySelectorAll(".rtab").forEach(x=>x.classList.toggle("on", x.dataset.run==="1"));
   document.querySelectorAll(".xtab").forEach(x=>x.classList.toggle("on", x.dataset.x==="MT"));
   autosave(); render();
@@ -2364,7 +2420,7 @@ function makePdf(){
   ["MT"].forEach(ex=>{
     [["pf1st","PF 1st"],["pf2nd","PF 2nd"]].forEach(([pk,lbl])=>{
       const f=finalGrade(ex,pk); const nm=person[pk].name||lbl;
-      doc.text(ex+"  \u2014  "+nm+" ("+duty[pk]+"):  "+f.label+(f.sim?"  (simulator malfunction)":"")+"   Take "+take[pk], M, y); y+=12;
+      doc.text(ex+"  \u2014  "+nm+" ("+duty[pk]+"):  "+f.label+(f.reasonLabel?("  ("+f.reasonLabel+")"):"")+"   Take "+take[pk], M, y); y+=12;
       const _pfR=pk==="pf1st"?1:2, _pmR=pk==="pf1st"?2:1;
       doc.setTextColor(95,95,95);
       doc.text("        Seat \u2014 PF run: "+seatFull(_pfR,pk)+" ; PM run: "+seatFull(_pmR,pk), M, y); y+=11;
@@ -2497,50 +2553,61 @@ function initToolbar(){
 /* ---- final grade (AIMS -> TVER reference table) ---- */
 const FINAL_TYPE = { MV:"validation", SPOT:"training", MT:"training" };
 const FINAL_TRIGGER = new Set(["2","2-RF","1","1-RF","N/A"]);
-const simFail = {};   // key ex|pkey -> true when the sim broke and the event could not be completed
+const incReason = {};   // key ex|pkey -> ""|"sim"|"illness"|"time"
 function finalGrade(ex, pkey){
   const events = MT_EVENTS;
   const pfR = pkey==="pf1st" ? 1 : 2;
   const pmR = pkey==="pf1st" ? 2 : 1;
-  let any=false, bad=false; const reasons=[];
+  let any=false, bad=false, hasNA=false; const reasons=[];
   events.forEach(ev=>{
     ["H","SOP","A","CRM"].forEach(role=>{
       if(ev.rows[role]!==1) return;
       if(!dutyAvailable(pfR, ev.code, role)) return;
       any=true; const v=state[key(ex,pfR,ev.code,role)]||"4";
-      if(FINAL_TRIGGER.has(v)){ bad=true; reasons.push(ev.code+" "+roleTag(role)+" ("+v+")"); }
+      if(FINAL_TRIGGER.has(v)){ bad=true; if(v==="N/A") hasNA=true; reasons.push(ev.code+" "+roleTag(role)+" ("+v+")"); }
     });
     ["SOP","CRM"].forEach(role=>{
       if(ev.rows[role]!==1) return;
       if(!dutyAvailable(pmR, ev.code, role+"_PM")) return;
       any=true; const v=state[key(ex,pmR,ev.code,role+"_PM")]||"4";
-      if(FINAL_TRIGGER.has(v)){ bad=true; reasons.push(ev.code+" "+roleTag(role+"_PM")+" ("+v+")"); }
+      if(FINAL_TRIGGER.has(v)){ bad=true; if(v==="N/A") hasNA=true; reasons.push(ev.code+" "+roleTag(role+"_PM")+" ("+v+")"); }
     });
   });
-  const type=FINAL_TYPE[ex]||"training"; let label,cls,sim=!!simFail[ex+"|"+pkey];
-  if(sim){ label="Incomplete"; cls="fail"; }
+  const type=FINAL_TYPE[ex]||"training";
+  const _r = incReason[ex+"|"+pkey]||"";
+  const forced = (_r==="sim"||_r==="illness");
+  let label,cls;
+  if(forced){ label="Incomplete"; cls="fail"; }
   else if(!any){ label="Not graded"; cls="na"; }
   else if(bad){ label = type==="validation" ? "Unsatisfactory" : "Incomplete"; cls="fail"; }
   else { label = type==="validation" ? "Satisfactory" : "Complete"; cls="pass"; }
-  return {label,cls,any,bad,sim,reasons};
+  const _RL={sim:"Simulator malfunction",illness:"Illness",time:"Unable to complete in allotted time"};
+  let reasonLabel=_RL[_r]||"";
+  if(!reasonLabel && cls==="fail" && hasNA) reasonLabel="Unable to complete in allotted time";
+  return {label,cls,any,bad,hasNA,reason:_r,reasonLabel,forced,sim:(_r==="sim"),reasons};
 }
 function renderFinals(wrap, ex){
   const host=wrap.querySelector("[data-finalbar]"); if(!host) return;
   host.innerHTML=`<span class="fl-h">Final grade \u00b7 ${ex} <span class="qbtn" data-help="final">?</span></span>`;
   [["pf1st","PF 1st"],["pf2nd","PF 2nd"]].forEach(([pk,lbl])=>{
     const f=finalGrade(ex,pk); const nm=person[pk].name||lbl;
-    const grp=document.createElement("span");
-    grp.style.display="inline-flex"; grp.style.alignItems="center"; grp.style.gap="7px";
+    const grp=document.createElement("span"); grp.className="fl-grp";
     const chip=document.createElement("span"); chip.className="fl-chip fl-"+f.cls;
     chip.innerHTML=`<span class="who">${esc(nm)}</span> ${esc(f.label)}`;
-    if(f.sim) chip.title="Simulator malfunction \u2014 unable to complete";
+    if(f.reasonLabel) chip.title=f.reasonLabel;
     else if(f.bad && f.reasons.length) chip.title="Not completed: "+f.reasons.join(", ");
     grp.appendChild(chip);
-    const sim=document.createElement("label"); sim.className="fl-sim";
-    const cb=document.createElement("input"); cb.type="checkbox"; cb.checked=!!simFail[ex+"|"+pk];
-    cb.addEventListener("change",()=>{ simFail[ex+"|"+pk]=cb.checked; renderFinals(wrap,ex); updateNotifyBtn(); });
-    sim.appendChild(cb); sim.appendChild(document.createTextNode("Sim malfunction"));
-    grp.appendChild(sim);
+    const seg=document.createElement("span"); seg.className="fl-reason";
+    [["sim","Sim malfunction"],["illness","Illness"],["time","Unable to complete in time"]].forEach(([val,txt])=>{
+      const b=document.createElement("button"); b.type="button";
+      const on = incReason[ex+"|"+pk]===val;
+      const auto = !incReason[ex+"|"+pk] && val==="time" && f.cls==="fail" && f.hasNA;
+      b.className="fl-rbtn"+(on?" on":"")+(auto?" auto":"");
+      b.textContent=txt;
+      b.onclick=()=>{ incReason[ex+"|"+pk]=(incReason[ex+"|"+pk]===val?"":val); renderFinals(wrap,ex); updateNotifyBtn(); };
+      seg.appendChild(b);
+    });
+    grp.appendChild(seg);
     host.appendChild(grp);
   });
 }
@@ -2601,16 +2668,16 @@ function buildEmailDrafts(){
       const pfR=pk==="pf1st"?1:2; const seat=seatFull(pfR,pk); const takeN=parseInt(take[pk],10)||1;
       const fmtItem=(it)=>{ let s="  • "+it.code+" "+it.nm+" — "+it.dim+" — grade "+it.grade; (it.stds||[]).forEach(st=>{ s+="\n        · "+st; }); if(it.note){ s+="\n        Comment: "+it.note; } return s; };
       const il = items.length ? items.map(fmtItem).join("\n")
-                              : (f.sim?"  • Event not completed — simulator malfunction (repeat the event)":"  • (see attached grade sheet)");
+                              : (f.reasonLabel?("  • Event not completed — "+f.reasonLabel+" (repeat the event)"):"  • (see attached grade sheet)");
       const nil = items.length ? items.map(fmtItem).join("\n")
-                               : (f.sim?"  • Repeat the event (simulator malfunction)":"");
+                               : (f.reasonLabel?("  • Repeat the event ("+f.reasonLabel+")"):"");
       const subject = cur+" "+ex+" — "+f.label+" — "+nm+" (Emp "+emp+") — Take "+takeN;
       const body =
         nm+" (Emp "+emp+") received an "+f.label+" on the "+ex+" ("+cur+") event on "+(sessionDate||"—")+".\n\n"+
         "Crew position: "+crew+"    Seat: "+seat+"\n"+
         "Instructor: "+(instructor.name||"—")+" (Emp "+(instructor.emp||"—")+")\n"+
         "Take: "+takeN+"\n"+
-        "Final grade: "+f.label+"\n\n"+
+        "Final grade: "+f.label+(f.reasonLabel?("\nReason: "+f.reasonLabel):"")+"\n\n"+
         "Items to be completed on the next take (repeat only these):\n"+il+"\n\n"+
         "Please schedule the completion event and route the items to the next instructor.\n\n"+
         "----------------------------------------\n"+
@@ -2684,6 +2751,7 @@ document.querySelectorAll(".xtab").forEach(t=>t.addEventListener("click",()=>{
   document.addEventListener("click", function(e){ const _q=e.target.closest("[data-help]"); if(_q){ e.preventDefault(); e.stopPropagation(); openHelp(_q.dataset.help); } });
   const dv=document.getElementById("docver");
   if(dv) dv.textContent="Version "+VERSION+" · Updated "+VERSION_DATE;
+  if(dv){ const _rv=document.createElement("a"); _rv.href="#"; _rv.className="revlink"; _rv.style.marginLeft="auto"; _rv.textContent="Revisions"; _rv.onclick=function(e){ e.preventDefault(); openRevisions(); }; dv.parentNode.insertBefore(_rv, dv); }
   const lg=document.getElementById("doclogo");
   if(lg && window.LOGO && window.LOGO.svg) lg.src=window.LOGO.svg;
   setInterval(()=>{ try{ autosave(); }catch(e){} }, 2000);
