@@ -892,7 +892,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var n,r,i,a,
 const GRADES = ["5","4","3","2","2-RP","2-RF","1","1-RP","1-RF","N/A"];
 const BELOW = new Set(["3","2","2-RP","2-RF","1","1-RP","1-RF"]);
 /* ---- document version (bump on each update) ---- */
-const VERSION = "2026.07.36";
+const VERSION = "2026.07.37";
 const VERSION_DATE = "2026-07-10";
 /* ---- data models ---- */
 // rows present per exercise, in AIMS/PF then PM order
@@ -2222,7 +2222,7 @@ function toast(msg){ let t=document.getElementById("toast"); if(!t){ t=document.
 /* generic modal */
 function closeModal(){ document.querySelectorAll(".mo-overlay").forEach(o=>o.remove()); }
 const CHANGELOG=[
- {v:"2026.07.36",date:"2026-07-10",notes:["Incomplete reasons: added Illness and ‘Unable to complete in allotted time’ (pick one) alongside Simulator malfunction.","Double-tap a column header to mark the whole column N/A for the current run, with a reason.","Added this clickable Revision history next to the version number.","Final-grade reason buttons now line up on their own rows on the iPad."]},
+ {v:"2026.07.37",date:"2026-07-10",notes:["Incomplete reasons: added Illness and ‘Unable to complete in allotted time’ (pick one) alongside Simulator malfunction.","Double-tap a column header to mark the whole column N/A for the current run, with a reason.","Added this clickable Revision history next to the version number.","Final-grade reason buttons now line up on their own rows on the iPad.","Added a ‘Check for updates’ button at the top — refreshes to the newest version without closing the app (your work in progress is kept)."]},
  {v:"2026.07.33",date:"2026-07-08",notes:["Repeat-event email: one message to the three offices with the next-instructor note, the Training Records notice, and Copy subject / Copy body."]},
  {v:"2026.07.30",date:"2026-07-08",notes:["Profile time axis now shows correctly on first open."]},
  {v:"2026.07.26",date:"2026-07-07",notes:["Per-crewmember Take number; wider name and employee-number fields; date picker defaults to today."]},
@@ -2238,6 +2238,10 @@ function openRevisions(){
     d.appendChild(ul); wrap.appendChild(d);
   });
   showModal("Revision history", wrap, [{label:"Close",onClick:closeModal}]);
+}
+function checkUpdates(){
+  try{ if(window.top && window.top!==window){ window.top.location.reload(); return; } }catch(e){}
+  try{ location.replace(location.pathname + "?v=" + Date.now()); }catch(e){ location.reload(); }
 }
 function showModal(title, contentNode, buttons){
   closeModal();
@@ -2752,7 +2756,7 @@ document.querySelectorAll(".xtab").forEach(t=>t.addEventListener("click",()=>{
   document.addEventListener("click", function(e){ const _q=e.target.closest("[data-help]"); if(_q){ e.preventDefault(); e.stopPropagation(); openHelp(_q.dataset.help); } });
   const dv=document.getElementById("docver");
   if(dv) dv.textContent="Version "+VERSION+" · Updated "+VERSION_DATE;
-  if(dv){ const _rv=document.createElement("a"); _rv.href="#"; _rv.className="revlink"; _rv.style.marginLeft="auto"; _rv.textContent="Revisions"; _rv.onclick=function(e){ e.preventDefault(); openRevisions(); }; dv.parentNode.insertBefore(_rv, dv); }
+  if(dv){ const _cu=document.createElement("a"); _cu.href="#"; _cu.className="revlink cu"; _cu.style.marginLeft="auto"; _cu.textContent="↻ Check for updates"; _cu.onclick=function(e){ e.preventDefault(); checkUpdates(); }; const _rv=document.createElement("a"); _rv.href="#"; _rv.className="revlink"; _rv.textContent="Revisions"; _rv.onclick=function(e){ e.preventDefault(); openRevisions(); }; dv.parentNode.insertBefore(_cu, dv); dv.parentNode.insertBefore(_rv, dv); }
   const lg=document.getElementById("doclogo");
   if(lg && window.LOGO && window.LOGO.svg) lg.src=window.LOGO.svg;
   setInterval(()=>{ try{ autosave(); }catch(e){} }, 2000);
