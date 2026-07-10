@@ -892,7 +892,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var n,r,i,a,
 const GRADES = ["5","4","3","2","2-RP","2-RF","1","1-RP","1-RF","N/A"];
 const BELOW = new Set(["3","2","2-RP","2-RF","1","1-RP","1-RF"]);
 /* ---- document version (bump on each update) ---- */
-const VERSION = "2026.07.35";
+const VERSION = "2026.07.36";
 const VERSION_DATE = "2026-07-10";
 /* ---- data models ---- */
 // rows present per exercise, in AIMS/PF then PM order
@@ -2222,7 +2222,7 @@ function toast(msg){ let t=document.getElementById("toast"); if(!t){ t=document.
 /* generic modal */
 function closeModal(){ document.querySelectorAll(".mo-overlay").forEach(o=>o.remove()); }
 const CHANGELOG=[
- {v:"2026.07.35",date:"2026-07-10",notes:["Incomplete reasons: added Illness and ‘Unable to complete in allotted time’ (pick one) alongside Simulator malfunction.","Double-tap a column header to mark the whole column N/A for the current run, with a reason.","Added this clickable Revision history next to the version number."]},
+ {v:"2026.07.36",date:"2026-07-10",notes:["Incomplete reasons: added Illness and ‘Unable to complete in allotted time’ (pick one) alongside Simulator malfunction.","Double-tap a column header to mark the whole column N/A for the current run, with a reason.","Added this clickable Revision history next to the version number.","Final-grade reason buttons now line up on their own rows on the iPad."]},
  {v:"2026.07.33",date:"2026-07-08",notes:["Repeat-event email: one message to the three offices with the next-instructor note, the Training Records notice, and Copy subject / Copy body."]},
  {v:"2026.07.30",date:"2026-07-08",notes:["Profile time axis now shows correctly on first open."]},
  {v:"2026.07.26",date:"2026-07-07",notes:["Per-crewmember Take number; wider name and employee-number fields; date picker defaults to today."]},
@@ -2588,6 +2588,7 @@ function finalGrade(ex, pkey){
 }
 function renderFinals(wrap, ex){
   const host=wrap.querySelector("[data-finalbar]"); if(!host) return;
+  host.style.display="flex"; host.style.flexDirection="column"; host.style.alignItems="flex-start"; host.style.rowGap="9px";
   host.innerHTML=`<span class="fl-h">Final grade \u00b7 ${ex} <span class="qbtn" data-help="final">?</span></span>`;
   [["pf1st","PF 1st"],["pf2nd","PF 2nd"]].forEach(([pk,lbl])=>{
     const f=finalGrade(ex,pk); const nm=person[pk].name||lbl;
