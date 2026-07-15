@@ -924,7 +924,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var n,r,i,a,
 const GRADES = ["5","4","3","2","2-RP","2-RF","1","1-RP","1-RF","N/A"];
 const BELOW = new Set(["3","2","2-RP","2-RF","1","1-RP","1-RF"]);
 /* ---- document version (bump on each update) ---- */
-const VERSION = "2026.07.48";
+const VERSION = "2026.07.49";
 const VERSION_DATE = "2026-07-15";
 /* ---- data models ---- */
 // rows present per exercise, in AIMS/PF then PM order
@@ -1158,26 +1158,69 @@ function normRank(s){ s=String(s||"").toUpperCase(); if(/(^|[^A-Z])CA([^A-Z]|$)|
 function _csvsplit(line,delim){ const out=[]; let cur="",q=false; for(let i=0;i<line.length;i++){ const ch=line[i]; if(ch==='"'){ q=!q; } else if(ch===delim && !q){ out.push(cur); cur=""; } else cur+=ch; } out.push(cur); return out.map(s=>s.trim().replace(/^"|"$/g,"")); }
 function importRosterCSV(text){
   const rows=text.split(/\r?\n/).filter(r=>r.trim().length);
-  if(!rows.length) return {n:0,err:"file is empty"};
+  if(!rows.length) return {n:0,err:"nothing to load — paste your roster first"};
   const delim = (rows[0].split("\t").length>rows[0].split(",").length) ? "\t" : ",";
-  const hdr=_csvsplit(rows[0],delim).map(h=>h.toLowerCase());
+  let hdr=_csvsplit(rows[0],delim).map(h=>h.toLowerCase());
   const col=(...ns)=>{ for(const n of ns){ const i=hdr.findIndex(h=>h.includes(n)); if(i>=0) return i; } return -1; };
-  const iEmp=col("employee","emp #","emp#","empno","emp no","emp number","empl","emp id","file #","file no");
-  const iName=col("name","crew","pilot");
-  const iRank=col("rank","position","seat","status","pos","base position","category");
-  if(iEmp<0||iName<0) return {n:0,err:"couldn't find an Employee # column and a Name column"};
+  let iEmp=col("employee","emp #","emp#","empno","emp no","emp number","empl","emp id","file #","file no");
+  let iName=col("name","crew","pilot");
+  let iRank=col("rank","position","seat","status","pos","base position","category");
+  let start=1;
+  if(iEmp<0||iName<0){
+    start=0;
+    const sample=rows.slice(0,Math.min(rows.length,25)).map(r=>_csvsplit(r,delim));
+    const ncol=Math.max.apply(null,sample.map(c=>c.length));
+    const sEmp=[],sRank=[],sName=[];
+    for(let c=0;c<ncol;c++){ let num=0,rk=0,tx=0,cnt=0;
+      sample.forEach(row=>{ const v=(row[c]||"").trim(); if(!v)return; cnt++;
+        if(/^\d[\d\s-]{3,}$/.test(v)) num++;
+        if(/^(ca|capt|captain|fo|f\/o|first officer)$/i.test(v)) rk++;
+        if(/[a-z]{2,}/i.test(v)) tx++; });
+      sEmp[c]=cnt?num/cnt:0; sRank[c]=cnt?rk/cnt:0; sName[c]=cnt?tx/cnt:0;
+    }
+    const amax=(a,skip)=>{ let bi=-1,bv=0; a.forEach((v,i)=>{ if(skip&&skip.indexOf(i)>=0)return; if(v>bv){bv=v;bi=i;} }); return bi; };
+    iEmp=amax(sEmp); iRank=amax(sRank,[iEmp]); iName=amax(sName,[iEmp,iRank]);
+  }
+  if(iEmp<0||iName<0) return {n:0,err:"couldn't find the employee-number and name columns — include a header row: Employee #, Name, Rank"};
   const map={};
-  for(let i=1;i<rows.length;i++){ const c=_csvsplit(rows[i],delim); const emp=(c[iEmp]||"").trim(); const name=(c[iName]||"").trim(); if(!emp||!name) continue; map[emp]={name:name, rank:iRank>=0?normRank(c[iRank]):""}; }
+  for(let i=start;i<rows.length;i++){ const c=_csvsplit(rows[i],delim); let emp=(c[iEmp]||"").trim(); const name=(c[iName]||"").trim(); if(!emp||!name) continue; if(!/\d/.test(emp)) continue; map[emp]={name:name, rank:iRank>=0?normRank(c[iRank]):""}; }
+  if(!Object.keys(map).length) return {n:0,err:"no crew rows found — check the format (employee number, name, rank)"};
   ROSTER=map; try{ localStorage.setItem("AQP_ROSTER_v1", JSON.stringify(ROSTER)); }catch(e){}
   return {n:Object.keys(map).length,err:null};
 }
 function updateRosterBtn(){ const b=document.querySelector('[data-tb="importroster"]'); if(b){ const n=rosterCount(); b.textContent = n? ("✓ Roster ("+n+")") : "Import roster"; b.classList.toggle("has", n>0); } }
-function onImportRoster(){
+function _rosterApplyText(text){
+  const res=importRosterCSV(String(text||""));
+  if(res.err){ toast("Roster: "+res.err); return false; }
+  toast("Roster loaded on this device — "+res.n+" crewmembers."); updateRosterBtn(); closeModal(); return true;
+}
+function _rosterFilePick(){
   let inp=document.getElementById("rosterFileInput");
   if(!inp){ inp=document.createElement("input"); inp.type="file"; inp.accept=".csv,.tsv,.txt,text/csv"; inp.id="rosterFileInput"; inp.style.display="none"; document.body.appendChild(inp);
-    inp.addEventListener("change",()=>{ const f=inp.files&&inp.files[0]; if(!f){return;} const rd=new FileReader(); rd.onload=()=>{ const res=importRosterCSV(String(rd.result||"")); if(res.err){ toast("Roster import: "+res.err); } else { toast("Roster loaded on this device — "+res.n+" crewmembers. Type an employee # to auto-fill."); } updateRosterBtn(); }; rd.readAsText(f); inp.value=""; });
+    inp.addEventListener("change",()=>{ const f=inp.files&&inp.files[0]; if(!f){return;} const rd=new FileReader(); rd.onload=()=>{ _rosterApplyText(String(rd.result||"")); }; rd.readAsText(f); inp.value=""; });
   }
   inp.click();
+}
+function onImportRoster(){
+  const wrap=document.createElement("div");
+  const info=document.createElement("div"); info.className="mo-lbl"; info.style.marginBottom="4px";
+  info.textContent="Copy your crew roster (from the roster spreadsheet or email) and paste it in the box below, then tap Load roster. It stays on this iPad and is never uploaded.";
+  wrap.appendChild(info);
+  const ta=document.createElement("textarea"); ta.className="mo-input"; ta.rows=8;
+  ta.style.width="100%"; ta.style.minHeight="150px"; ta.style.fontFamily="ui-monospace,Menlo,monospace"; ta.style.fontSize="13px";
+  ta.placeholder="Employee #\tName\tRank\n1234567\tSMITH, JOHN\tCA\n2345678\tDOE, JANE\tFO";
+  wrap.appendChild(ta);
+  const hint=document.createElement("div"); hint.style.cssText="font-size:12px;opacity:.72;margin-top:6px;line-height:1.35";
+  hint.textContent="One crewmember per line, with employee number, name and rank (CA or FO). Pasting straight from a spreadsheet works. Extra columns are ignored.";
+  wrap.appendChild(hint);
+  const rn=(typeof rosterCount==="function")?rosterCount():0;
+  if(rn){ const cur=document.createElement("div"); cur.style.cssText="font-size:12px;margin-top:8px;font-weight:600;color:#2C6E49"; cur.textContent="✓ "+rn+" crewmembers already loaded on this device."; wrap.appendChild(cur); }
+  showModal("Load crew roster", wrap, [
+    {label:"Paste from clipboard", onClick:function(){ try{ if(navigator.clipboard&&navigator.clipboard.readText){ navigator.clipboard.readText().then(function(t){ if(t&&t.trim()){ ta.value=t; toast("Pasted — now tap Load roster."); } else { toast("Nothing copied yet — copy your roster first."); } }).catch(function(){ toast("Tap in the box and hold to Paste."); }); } else { toast("Tap in the box and hold to Paste."); } }catch(e){ toast("Tap in the box and hold to Paste."); } }},
+    {label:"Choose a file instead", onClick:_rosterFilePick},
+    {label:"Load roster", kind:"primary", onClick:function(){ if(!ta.value.trim()){ toast("Paste your roster first."); return; } _rosterApplyText(ta.value); }},
+  ]);
+  setTimeout(function(){ try{ ta.focus(); }catch(e){} },60);
 }
 function applyRosterToEmp(pk){ const r=rosterLookup(person[pk].emp); if(!r) return false; person[pk].name=r.name; if(r.rank==="CA"||r.rank==="FO") duty[pk]=r.rank; return true; }
 const OFFICES = ["MIATCTrainingRecords@atlasair.com","MIATC747FleetCaptain@atlasair.com","MIATCTrainingScheduling@atlasair.com"];
@@ -2420,6 +2463,7 @@ function toast(msg){ let t=document.getElementById("toast"); if(!t){ t=document.
 /* generic modal */
 function closeModal(){ document.querySelectorAll(".mo-overlay").forEach(o=>o.remove()); }
 const CHANGELOG=[
+ {v:"2026.07.49",date:"2026-07-15",notes:["Loading the crew roster is now simpler: tap Import roster and paste your roster straight from the spreadsheet or email (or tap Paste from clipboard) - no file to hunt for in the Files app. Choosing a file still works as a backup. The roster still stays on this iPad and is never uploaded."]},
  {v:"2026.07.48",date:"2026-07-15",notes:["Crew roster lookup: type a crewmember's employee number and their name and rank fill in automatically. Load your roster once on the device with the Import roster button - it stays on this iPad and is never uploaded. Manual entry still works for anyone not on the list, and you can still change a rank on the form if the roster is out of date.","The Date field now defaults to today each time the tool is opened, unless you pick a specific date (your choice is then kept for that crew) - matching the MV tool."]},
  {v:"2026.07.43",date:"2026-07-12",notes:["Graded-task pop-ups now include a collapsible \u201CPerformance Statement & Standards\u201D reference \u2014 the approved Performance Statement (from the Qualification Standards) plus the per-dimension Performance Standards and FCOM/FOM/FCTM references, for all 13 CQMT1.1 graded tasks."]},
  {v:"2026.07.42",date:"2026-07-11",notes:["Added per-crewmember Takeoffs and Landings (0–9 dropdowns) and Special Tracking (Yes/No, default No), to the right of each pilot — feeding the AIMS Module Status and the entry-order PDF.","Moved the ⇅ Swap button to the top-right of the crew block."]},
