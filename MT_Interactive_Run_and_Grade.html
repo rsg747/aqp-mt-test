@@ -513,6 +513,7 @@ window.CHARTS = {
     <button type="button" class="tbtn2" data-tb="save">Save</button>
     <button type="button" class="tbtn2" data-tb="saved">Saved sessions</button>
     <button type="button" class="tbtn2" data-tb="new">New crew</button>
+    <button type="button" class="tbtn2" data-tb="importroster" title="Load a crew roster CSV on this device (never uploaded). Then type an employee number to auto-fill name and rank.">Import roster</button>
     <button type="button" class="tbtn2 notify" data-tb="notify" id="notifyBtn">Email notification</button>
     <button type="button" class="tbtn2 pdf" data-tb="pdf">Save as PDF</button>
     <button type="button" class="helpbtn" data-help="__index">? Help</button>
@@ -1148,6 +1149,37 @@ let sessionDate = "";
 let instructor = {name:"", emp:""};
 let crewSession = {pf1st:{to:"1",ldg:"3",spec:"No"}, pf2nd:{to:"1",ldg:"3",spec:"No"}};
 const take = {pf1st:"1", pf2nd:"1"};
+/* ---- crew roster lookup — LOCAL import only, never published, never leaves the device ---- */
+let ROSTER = {};
+try{ ROSTER = JSON.parse(localStorage.getItem("AQP_ROSTER_v1")||"{}"); }catch(e){ ROSTER={}; }
+function rosterCount(){ return Object.keys(ROSTER).length; }
+function rosterLookup(emp){ emp=String(emp==null?"":emp).trim(); return (emp && ROSTER[emp]) ? ROSTER[emp] : null; }
+function normRank(s){ s=String(s||"").toUpperCase(); if(/(^|[^A-Z])CA([^A-Z]|$)|CAPT|CAPTAIN/.test(s)) return "CA"; if(/(^|[^A-Z])FO([^A-Z]|$)|FIRST OFFICER|F\/O/.test(s)) return "FO"; return ""; }
+function _csvsplit(line,delim){ const out=[]; let cur="",q=false; for(let i=0;i<line.length;i++){ const ch=line[i]; if(ch==='"'){ q=!q; } else if(ch===delim && !q){ out.push(cur); cur=""; } else cur+=ch; } out.push(cur); return out.map(s=>s.trim().replace(/^"|"$/g,"")); }
+function importRosterCSV(text){
+  const rows=text.split(/\r?\n/).filter(r=>r.trim().length);
+  if(!rows.length) return {n:0,err:"file is empty"};
+  const delim = (rows[0].split("\t").length>rows[0].split(",").length) ? "\t" : ",";
+  const hdr=_csvsplit(rows[0],delim).map(h=>h.toLowerCase());
+  const col=(...ns)=>{ for(const n of ns){ const i=hdr.findIndex(h=>h.includes(n)); if(i>=0) return i; } return -1; };
+  const iEmp=col("employee","emp #","emp#","empno","emp no","emp number","empl","emp id","file #","file no");
+  const iName=col("name","crew","pilot");
+  const iRank=col("rank","position","seat","status","pos","base position","category");
+  if(iEmp<0||iName<0) return {n:0,err:"couldn't find an Employee # column and a Name column"};
+  const map={};
+  for(let i=1;i<rows.length;i++){ const c=_csvsplit(rows[i],delim); const emp=(c[iEmp]||"").trim(); const name=(c[iName]||"").trim(); if(!emp||!name) continue; map[emp]={name:name, rank:iRank>=0?normRank(c[iRank]):""}; }
+  ROSTER=map; try{ localStorage.setItem("AQP_ROSTER_v1", JSON.stringify(ROSTER)); }catch(e){}
+  return {n:Object.keys(map).length,err:null};
+}
+function updateRosterBtn(){ const b=document.querySelector('[data-tb="importroster"]'); if(b){ const n=rosterCount(); b.textContent = n? ("✓ Roster ("+n+")") : "Import roster"; b.classList.toggle("has", n>0); } }
+function onImportRoster(){
+  let inp=document.getElementById("rosterFileInput");
+  if(!inp){ inp=document.createElement("input"); inp.type="file"; inp.accept=".csv,.tsv,.txt,text/csv"; inp.id="rosterFileInput"; inp.style.display="none"; document.body.appendChild(inp);
+    inp.addEventListener("change",()=>{ const f=inp.files&&inp.files[0]; if(!f){return;} const rd=new FileReader(); rd.onload=()=>{ const res=importRosterCSV(String(rd.result||"")); if(res.err){ toast("Roster import: "+res.err); } else { toast("Roster loaded on this device — "+res.n+" crewmembers. Type an employee # to auto-fill."); } updateRosterBtn(); }; rd.readAsText(f); inp.value=""; });
+  }
+  inp.click();
+}
+function applyRosterToEmp(pk){ const r=rosterLookup(person[pk].emp); if(!r) return false; person[pk].name=r.name; if(r.rank==="CA"||r.rank==="FO") duty[pk]=r.rank; return true; }
 const OFFICES = ["MIATCTrainingRecords@atlasair.com","MIATC747FleetCaptain@atlasair.com","MIATCTrainingScheduling@atlasair.com"];
 const CURRIC = { MV:"CQMV.1", SPOT:"CQMV.1", MT:"CQMT1.1" };
 function todayISO(){ const d=new Date(), m=String(d.getMonth()+1).padStart(2,"0"), day=String(d.getDate()).padStart(2,"0"); return d.getFullYear()+"-"+m+"-"+day; }
@@ -1375,6 +1407,12 @@ function buildSheet(ex){
       { const sl=wrap.querySelector("[data-seatline]"); if(sl) sl.innerHTML=seatSummaryHTML(RUN); }
       if(f==="name") renderFinals(wrap, wrap._ex);
     });
+  });
+  wrap.querySelectorAll('.meta input[data-person][data-field="emp"]').forEach(inp=>{
+    inp.addEventListener("change",()=>{ if(applyRosterToEmp(inp.dataset.person)){ render(); if(typeof autosave==="function") autosave(); } });
+  });
+  wrap.querySelectorAll('.meta input[data-instr="emp"]').forEach(inp=>{
+    inp.addEventListener("change",()=>{ const r=rosterLookup(inp.value); if(r){ instructor.name=r.name; render(); } });
   });
   wireTimer(wrap);
   buildJustifications(wrap, ex, events);   // initial pass
@@ -2715,7 +2753,7 @@ function buildPrintReport(){
 /* toolbar wiring */
 function initToolbar(){
   const bind=(name,fn)=>{ const b=document.querySelector(`[data-tb="${name}"]`); if(b) b.onclick=fn; };
-  bind("save",saveSession); bind("saved",openSaved); bind("new",newCrew); bind("pdf",savePDF); bind("notify",onNotify);
+  bind("save",saveSession); bind("saved",openSaved); bind("new",newCrew); bind("pdf",savePDF); bind("notify",onNotify); bind("importroster",onImportRoster); updateRosterBtn();
   const st=document.getElementById("tbstatus");
   if(st) st.textContent = lsAvail()? "" : "Note: in-app saving isn't available here — use Save as PDF to keep records.";
 }
