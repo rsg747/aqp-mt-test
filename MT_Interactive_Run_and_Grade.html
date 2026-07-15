@@ -513,7 +513,7 @@ window.CHARTS = {
     <button type="button" class="tbtn2" data-tb="save">Save</button>
     <button type="button" class="tbtn2" data-tb="saved">Saved sessions</button>
     <button type="button" class="tbtn2" data-tb="new">New crew</button>
-    <button type="button" class="tbtn2" data-tb="importroster" title="Load a crew roster CSV on this device (never uploaded). Then type an employee number to auto-fill name and rank.">Import roster</button>
+    
     <button type="button" class="tbtn2 notify" data-tb="notify" id="notifyBtn">Email notification</button>
     <button type="button" class="tbtn2 pdf" data-tb="pdf">Save as PDF</button>
     <button type="button" class="helpbtn" data-help="__index">? Help</button>
@@ -924,7 +924,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var n,r,i,a,
 const GRADES = ["5","4","3","2","2-RP","2-RF","1","1-RP","1-RF","N/A"];
 const BELOW = new Set(["3","2","2-RP","2-RF","1","1-RP","1-RF"]);
 /* ---- document version (bump on each update) ---- */
-const VERSION = "2026.07.49";
+const VERSION = "2026.07.50";
 const VERSION_DATE = "2026-07-15";
 /* ---- data models ---- */
 // rows present per exercise, in AIMS/PF then PM order
@@ -2463,6 +2463,7 @@ function toast(msg){ let t=document.getElementById("toast"); if(!t){ t=document.
 /* generic modal */
 function closeModal(){ document.querySelectorAll(".mo-overlay").forEach(o=>o.remove()); }
 const CHANGELOG=[
+ {v:"2026.07.50",date:"2026-07-15",notes:["Removed the Import roster button for now to keep the form simple - enter each crewmember's name and employee number directly. Automatic crew fill is coming through the eCrew / AIMS integration."]},
  {v:"2026.07.49",date:"2026-07-15",notes:["Loading the crew roster is now simpler: tap Import roster and paste your roster straight from the spreadsheet or email (or tap Paste from clipboard) - no file to hunt for in the Files app. Choosing a file still works as a backup. The roster still stays on this iPad and is never uploaded."]},
  {v:"2026.07.48",date:"2026-07-15",notes:["Crew roster lookup: type a crewmember's employee number and their name and rank fill in automatically. Load your roster once on the device with the Import roster button - it stays on this iPad and is never uploaded. Manual entry still works for anyone not on the list, and you can still change a rank on the form if the roster is out of date.","The Date field now defaults to today each time the tool is opened, unless you pick a specific date (your choice is then kept for that crew) - matching the MV tool."]},
  {v:"2026.07.43",date:"2026-07-12",notes:["Graded-task pop-ups now include a collapsible \u201CPerformance Statement & Standards\u201D reference \u2014 the approved Performance Statement (from the Qualification Standards) plus the per-dimension Performance Standards and FCOM/FOM/FCTM references, for all 13 CQMT1.1 graded tasks."]},
