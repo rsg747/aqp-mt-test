@@ -924,8 +924,8 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var n,r,i,a,
 const GRADES = ["5","4","3","2","2-RP","2-RF","1","1-RP","1-RF","N/A"];
 const BELOW = new Set(["3","2","2-RP","2-RF","1","1-RP","1-RF"]);
 /* ---- document version (bump on each update) ---- */
-const VERSION = "2026.07.43";
-const VERSION_DATE = "2026-07-11";
+const VERSION = "2026.07.48";
+const VERSION_DATE = "2026-07-15";
 /* ---- data models ---- */
 // rows present per exercise, in AIMS/PF then PM order
 const MT_EVENTS = [
@@ -1145,7 +1145,7 @@ function tkey(){ return `${EX}|R${RUN}`; }
 const duty = { pf1st: "CA", pf2nd: "FO" };  // CA | FO | Seat Support
 // name / employee number per person, and shared date — persist across runs/exercises
 const person = { pf1st:{name:"",emp:""}, pf2nd:{name:"",emp:""} };
-let sessionDate = "";
+let sessionDate = ""; let dateUserSet = false;
 let instructor = {name:"", emp:""};
 let crewSession = {pf1st:{to:"1",ldg:"3",spec:"No"}, pf2nd:{to:"1",ldg:"3",spec:"No"}};
 const take = {pf1st:"1", pf2nd:"1"};
@@ -1402,7 +1402,7 @@ function buildSheet(ex){
   wrap.querySelectorAll(".meta input[data-field]").forEach(inp=>{
     inp.addEventListener("input",()=>{
       const f=inp.dataset.field;
-      if(f==="date"){ sessionDate=inp.value; }
+      if(f==="date"){ sessionDate=inp.value; dateUserSet=true; }
       else{ person[inp.dataset.person][f]=inp.value; }
       { const sl=wrap.querySelector("[data-seatline]"); if(sl) sl.innerHTML=seatSummaryHTML(RUN); }
       if(f==="name") renderFinals(wrap, wrap._ex);
@@ -2397,7 +2397,7 @@ function snapshot(){
   const t={}; for(const k in timers){ const T=timers[k]; t[k]= T.running ? (T.elapsedMs+(Date.now()-T.startMs)) : T.elapsedMs; }
   return { ver:VERSION, savedAt:new Date().toISOString(),
     state:{...state}, justCell:JSON.parse(JSON.stringify(justCell)),
-    person:JSON.parse(JSON.stringify(person)), duty:{...duty}, sessionDate, crewSession:JSON.parse(JSON.stringify(crewSession)), timers:t, incReason:{...incReason}, ssNotes:JSON.parse(JSON.stringify(ssNotes)), instructor:{...instructor}, take:{...take} };
+    person:JSON.parse(JSON.stringify(person)), duty:{...duty}, sessionDate, dateUserSet, crewSession:JSON.parse(JSON.stringify(crewSession)), timers:t, incReason:{...incReason}, ssNotes:JSON.parse(JSON.stringify(ssNotes)), instructor:{...instructor}, take:{...take} };
 }
 function applySnapshot(s){
   if(!s) return;
@@ -2405,7 +2405,7 @@ function applySnapshot(s){
   clearObj(justCell); Object.assign(justCell, s.justCell||{});
   if(s.person){ ["pf1st","pf2nd"].forEach(p=>{ person[p].name=(s.person[p]&&s.person[p].name)||""; person[p].emp=(s.person[p]&&s.person[p].emp)||""; }); }
   if(s.duty){ duty.pf1st=s.duty.pf1st||duty.pf1st; duty.pf2nd=s.duty.pf2nd||duty.pf2nd; }
-  sessionDate = s.sessionDate||"";
+  sessionDate = s.sessionDate||""; dateUserSet = !!s.dateUserSet;
   ["pf1st","pf2nd"].forEach(pk=>{ const d={to:"1",ldg:"3",spec:"No"}; const v=(s.crewSession&&s.crewSession[pk])||{}; crewSession[pk]={to:v.to!==undefined?v.to:d.to, ldg:v.ldg!==undefined?v.ldg:d.ldg, spec:v.spec||d.spec}; });
   clearObj(incReason); if(s.incReason) Object.assign(incReason, s.incReason); else if(s.simFail){ Object.keys(s.simFail).forEach(k=>{ if(s.simFail[k]) incReason[k]="sim"; }); }
   clearObj(ssNotes); if(s.ssNotes) Object.assign(ssNotes, s.ssNotes);
@@ -2420,6 +2420,7 @@ function toast(msg){ let t=document.getElementById("toast"); if(!t){ t=document.
 /* generic modal */
 function closeModal(){ document.querySelectorAll(".mo-overlay").forEach(o=>o.remove()); }
 const CHANGELOG=[
+ {v:"2026.07.48",date:"2026-07-15",notes:["Crew roster lookup: type a crewmember's employee number and their name and rank fill in automatically. Load your roster once on the device with the Import roster button - it stays on this iPad and is never uploaded. Manual entry still works for anyone not on the list, and you can still change a rank on the form if the roster is out of date.","The Date field now defaults to today each time the tool is opened, unless you pick a specific date (your choice is then kept for that crew) - matching the MV tool."]},
  {v:"2026.07.43",date:"2026-07-12",notes:["Graded-task pop-ups now include a collapsible \u201CPerformance Statement & Standards\u201D reference \u2014 the approved Performance Statement (from the Qualification Standards) plus the per-dimension Performance Standards and FCOM/FOM/FCTM references, for all 13 CQMT1.1 graded tasks."]},
  {v:"2026.07.42",date:"2026-07-11",notes:["Added per-crewmember Takeoffs and Landings (0–9 dropdowns) and Special Tracking (Yes/No, default No), to the right of each pilot — feeding the AIMS Module Status and the entry-order PDF.","Moved the ⇅ Swap button to the top-right of the crew block."]},
  {v:"2026.07.41",date:"2026-07-11",notes:["Replaced the departure chart with the STHBY 1 RNAV Departure (STHBY1.STHBY); the profile/lesson-guide chart pill is now ‘STHBY 1 SID’."]},
@@ -2506,7 +2507,7 @@ function newCrew(){
 function doNew(){
   clearObj(state); clearObj(justCell);
   person.pf1st.name=""; person.pf1st.emp=""; person.pf2nd.name=""; person.pf2nd.emp="";
-  duty.pf1st="CA"; duty.pf2nd="FO"; sessionDate=todayISO();
+  duty.pf1st="CA"; duty.pf2nd="FO"; sessionDate=todayISO(); dateUserSet=false;
   clearObj(timers); clearObj(incReason); clearObj(ssNotes); instructor.name=""; instructor.emp=""; take.pf1st="1"; take.pf2nd="1"; RUN=1; EX="MT";
   document.querySelectorAll(".rtab").forEach(x=>x.classList.toggle("on", x.dataset.run==="1"));
   document.querySelectorAll(".xtab").forEach(x=>x.classList.toggle("on", x.dataset.x==="MT"));
@@ -2978,7 +2979,7 @@ document.querySelectorAll(".xtab").forEach(t=>t.addEventListener("click",()=>{
 }));
 (function boot(){
   try{ const a=lsGet(AUTOSAVE_KEY); if(a) applySnapshot(a); }catch(e){}
-  if(!sessionDate) sessionDate=todayISO();
+  if(!dateUserSet || !sessionDate) sessionDate=todayISO();
   render();
   initToolbar();
   document.addEventListener("click", function(e){ const _q=e.target.closest("[data-help]"); if(_q){ e.preventDefault(); e.stopPropagation(); openHelp(_q.dataset.help); } });
