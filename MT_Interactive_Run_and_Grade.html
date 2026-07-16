@@ -924,7 +924,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var n,r,i,a,
 const GRADES = ["5","4","3","2","2-RP","2-RF","1","1-RP","1-RF","N/A"];
 const BELOW = new Set(["3","2","2-RP","2-RF","1","1-RP","1-RF"]);
 /* ---- document version (bump on each update) ---- */
-const VERSION = "2026.07.50";
+const VERSION = "2026.07.51";
 const VERSION_DATE = "2026-07-15";
 /* ---- data models ---- */
 // rows present per exercise, in AIMS/PF then PM order
@@ -1337,8 +1337,8 @@ function dutyAvailable(run, evCode, roleFull){
     // The person in this seat this run must hold the matching rank.
     if(!isPM && seatPerson !== "CA") return false;   // PF duty cell needs a CA here
     if(isPM  && seatPerson !== "FO") return false;   // PM duty cell needs an FO here
-    // CA+FO pairing: no seat swap — duty events graded on Run 1 only; N/A on Run 2.
-    if(pairing()==="CAFO" && run===2) return false;
+    // CA/FO: the rank checks above already limit duty events to the one run where the
+    // CA is PF and the FO is PM (Run 1 if CA is PF 1st, Run 2 if FO is PF 1st).
   }
   return true;
 }
@@ -2463,6 +2463,7 @@ function toast(msg){ let t=document.getElementById("toast"); if(!t){ t=document.
 /* generic modal */
 function closeModal(){ document.querySelectorAll(".mo-overlay").forEach(o=>o.remove()); }
 const CHANGELOG=[
+ {v:"2026.07.51",date:"2026-07-15",notes:["Fixed duty-specific maneuvers (e.g., RTO, CAT III / Autoland items) in a CA/FO pairing: they now grade correctly when the First Officer is PF 1st. Previously they only graded when the Captain was PF 1st and showed Not Required on every run otherwise. They now grade on the run where the Captain is PF and the First Officer is PM, whichever crew order you enter and after a Swap. CA/CA, FO/FO, and Captain-first CA/FO pairings are unchanged."]},
  {v:"2026.07.50",date:"2026-07-15",notes:["Removed the Import roster button for now to keep the form simple - enter each crewmember's name and employee number directly. Automatic crew fill is coming through the eCrew / AIMS integration."]},
  {v:"2026.07.49",date:"2026-07-15",notes:["Loading the crew roster is now simpler: tap Import roster and paste your roster straight from the spreadsheet or email (or tap Paste from clipboard) - no file to hunt for in the Files app. Choosing a file still works as a backup. The roster still stays on this iPad and is never uploaded."]},
  {v:"2026.07.48",date:"2026-07-15",notes:["Crew roster lookup: type a crewmember's employee number and their name and rank fill in automatically. Load your roster once on the device with the Import roster button - it stays on this iPad and is never uploaded. Manual entry still works for anyone not on the list, and you can still change a rank on the form if the roster is out of date.","The Date field now defaults to today each time the tool is opened, unless you pick a specific date (your choice is then kept for that crew) - matching the MV tool."]},
