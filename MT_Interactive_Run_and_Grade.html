@@ -924,7 +924,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var n,r,i,a,
 const GRADES = ["5","4","3","2","2-RP","2-RF","1","1-RP","1-RF","N/A"];
 const BELOW = new Set(["3","2","2-RP","2-RF","1","1-RP","1-RF"]);
 /* ---- document version (bump on each update) ---- */
-const VERSION = "2026.07.51";
+const VERSION = "2026.07.52";
 const VERSION_DATE = "2026-07-15";
 /* ---- data models ---- */
 // rows present per exercise, in AIMS/PF then PM order
@@ -2167,7 +2167,7 @@ function roleTag(role){
 function openGradePicker(box, k, ex, ev, role, run, sheet){
   closeGradePicker();
   const cur = state[k];
-  const opts = ["5","4","3","2","2-RP","2-RF","1","1-RP","1-RF","N/A"];
+  const opts = ["5","4","3","2","2-RP","2-RF","1","1-RP","1-RF"];
   const overlay=document.createElement("div"); overlay.className="gp-overlay";
   const modal=document.createElement("div"); modal.className="gpick";
   modal.innerHTML=`<div class="gp-head"><span class="ev">${ev.code} — ${ev.nm} · ${roleTag(role)}</span>
@@ -2463,6 +2463,7 @@ function toast(msg){ let t=document.getElementById("toast"); if(!t){ t=document.
 /* generic modal */
 function closeModal(){ document.querySelectorAll(".mo-overlay").forEach(o=>o.remove()); }
 const CHANGELOG=[
+ {v:"2026.07.52",date:"2026-07-16",notes:["Removed the N/A button from the individual grade picker. Every graded element on a task now takes a real grade (5 through 1). If an entire task wasn't observed, mark it N/A from the column header with a reason, as before. This prevents accidental single-cell N/A entries - a graded element that applies always needs a grade."]},
  {v:"2026.07.51",date:"2026-07-15",notes:["Fixed duty-specific maneuvers (e.g., RTO, CAT III / Autoland items) in a CA/FO pairing: they now grade correctly when the First Officer is PF 1st. Previously they only graded when the Captain was PF 1st and showed Not Required on every run otherwise. They now grade on the run where the Captain is PF and the First Officer is PM, whichever crew order you enter and after a Swap. CA/CA, FO/FO, and Captain-first CA/FO pairings are unchanged."]},
  {v:"2026.07.50",date:"2026-07-15",notes:["Removed the Import roster button for now to keep the form simple - enter each crewmember's name and employee number directly. Automatic crew fill is coming through the eCrew / AIMS integration."]},
  {v:"2026.07.49",date:"2026-07-15",notes:["Loading the crew roster is now simpler: tap Import roster and paste your roster straight from the spreadsheet or email (or tap Paste from clipboard) - no file to hunt for in the Files app. Choosing a file still works as a backup. The roster still stays on this iPad and is never uploaded."]},
