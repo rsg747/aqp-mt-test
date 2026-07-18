@@ -135,7 +135,7 @@
   /* ---- grade grid ---- */
   .gridwrap{overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:10px;border:1px solid var(--line)}
   table.grid{border-collapse:collapse;width:100%;min-width:760px}
-  table.grid th,table.grid td{border:1px solid var(--line);text-align:center}
+  table.grid th,table.grid td{border:1.5px solid #8b96a6;text-align:center}
   table.grid thead th{background:var(--navy);color:#fff;padding:8px 4px;font-size:12px;
     line-height:1.15;position:relative;cursor:pointer;user-select:none}
   table.grid thead th .code{font-size:15px;font-weight:800;display:block}
@@ -146,7 +146,7 @@
     color:#37424f;white-space:nowrap}
   tr.pm-first td{border-top:3px solid var(--navy)}
   .cell{padding:0}
-  .box{display:flex;align-items:center;justify-content:center;height:40px;font-size:16px;
+  .box{display:flex;align-items:center;justify-content:center;height:40px;font-size:17px;
     font-weight:800;color:var(--ink);cursor:pointer;background:#fff}
   .box.na{background:var(--na);color:var(--na-ink);font-weight:700;cursor:default;font-size:11px}
   .box.below{color:#b3261e}
@@ -924,7 +924,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var n,r,i,a,
 const GRADES = ["5","4","3","2","2-RP","2-RF","1","1-RP","1-RF","N/A"];
 const BELOW = new Set(["3","2","2-RP","2-RF","1","1-RP","1-RF"]);
 /* ---- document version (bump on each update) ---- */
-const VERSION = "2026.07.53";
+const VERSION = "2026.07.54";
 const VERSION_DATE = "2026-07-15";
 /* ---- data models ---- */
 // rows present per exercise, in AIMS/PF then PM order
@@ -2319,8 +2319,7 @@ function buildAIMS(){
   const host=wrap.querySelector("#aimsStudents");
   [1,2].forEach(sn=>host.appendChild(aimsStudent(sn,ex,events)));
   // below-standard justification summary — carries into AIMS entry
-  const jsum=buildAimsJustSummary(ex, events);
-  if(jsum) wrap.appendChild(jsum);
+  // per-student below-standard justifications now render inside each student block (aimsStudent)
   return wrap;
 }
 // gather below-standard cells for this exercise (both runs) with their standards+note
@@ -2365,6 +2364,33 @@ function buildAimsJustSummary(ex, events){
   });
   return box;
 }
+function buildStudentJust(events, pfRun, pmRun, ex){
+  const rows=[];
+  const scan=(run, roles)=> events.forEach(ev=> roles.forEach(role=>{
+    const v=state[key(ex,run,ev.code,role)];
+    if(v!==undefined && BELOW.has(v)){
+      const rec=justCell[jkeyOf(ex,run,ev.code,role)]||{stds:[],note:""};
+      const stds=(TASK_STANDARDS[ev.code]||{})[baseRole(role)]||[];
+      rows.push({ev, role, v, selStds:(rec.stds||[]).map(i=>stds[i]).filter(Boolean), note:rec.note||""});
+    }
+  }));
+  scan(pfRun, PF_TAG_ROLES); scan(pmRun, PM_TAG_ROLES);
+  if(!rows.length) return null;
+  const box=document.createElement("div"); box.className="justpanel aims-just";
+  box.innerHTML=`<h4>Below-Standard Justification — enter with this student</h4>`;
+  rows.forEach(r=>{
+    const item=document.createElement("div"); item.className="justitem";
+    const head=document.createElement("div"); head.className="jhead";
+    head.innerHTML=`<span class="jcode">${r.ev.code} — ${r.ev.nm}</span><span class="jtag">${roleTag(r.role)} (${r.v})</span>`;
+    item.appendChild(head);
+    const body=document.createElement("div"); body.className="jbody";
+    if(r.selStds.length){ const ul=document.createElement("ul"); ul.className="jstds"; r.selStds.forEach(s=>{ const li=document.createElement("li"); li.textContent=s; ul.appendChild(li); }); body.appendChild(ul); }
+    if(r.note.trim()){ const n=document.createElement("div"); n.className="jnote"; n.textContent=r.note.trim(); body.appendChild(n); }
+    if(!r.selStds.length && !r.note.trim()){ const h=document.createElement("div"); h.className="jhint"; h.textContent="No standard selected — open this grade on the run sheet to specify."; body.appendChild(h); }
+    item.appendChild(body); box.appendChild(item);
+  });
+  return box;
+}
 function aimsStudent(sn,ex,events){
   // Student 1 = PF-1st ; Student 2 = PF-2nd
   const pkey = sn===1 ? "pf1st" : "pf2nd";
@@ -2388,6 +2414,7 @@ function aimsStudent(sn,ex,events){
   s.querySelector(".bar").insertAdjacentHTML("beforeend", `<span class="fl-chip fl-na" style="margin-left:8px">PF ${esc(seatFull(pfRun,pkey))} \u00b7 PM ${esc(seatFull(pmRun,pkey))}</span>`);
   s.querySelector(".pf").appendChild(aimsTable(ex,events,"PF",pkey,pfRun));
   s.querySelector(".pm").appendChild(aimsTable(ex,events,"PM",pkey,pmRun));
+  { const _sj=buildStudentJust(events, pfRun, pmRun, ex); if(_sj) s.appendChild(_sj); }
   s.querySelectorAll("input[data-field]").forEach(inp=>{
     inp.addEventListener("input",()=>{ person[inp.dataset.person][inp.dataset.field]=inp.value; });
   });
@@ -2420,14 +2447,15 @@ function aimsTable(ex,events,side,person,run){
 function vcell(ex,ev,role,suf,run){
   const td=document.createElement("td");
   const structural = ev.rows[role]===1;
-  if(!structural){ td.className="na"; td.textContent="N/A"; return td; }
+  if(!structural){ td.className="na"; td.textContent="N/A"; td.style.background="#aec3de"; td.style.color="#121c37"; td.style.fontWeight="800"; return td; }
   if(!dutyAvailable(run, ev.code, role+suf)){
-    td.className="na duty"; td.textContent="N/A"; return td;
+    td.className="na duty"; td.textContent="N/A"; td.style.background="#aec3de"; td.style.color="#121c37"; td.style.fontWeight="800"; return td;
   }
   const k=key(ex,run,ev.code,role+suf);
   const v = state[k]||"4";
   td.className="v"; td.textContent=v;
-  if(BELOW.has(v)) td.style.color="#b3261e";
+  if(v==="4"){ td.style.color="#b0bac7"; td.style.fontWeight="600"; }
+  else { td.style.background="#c9a84a"; td.style.color="#161616"; td.style.fontWeight="800"; if(BELOW.has(v)) td.style.color="#821410"; }
   return td;
 }
 /* ================= save / load / export ================= */
@@ -2463,6 +2491,7 @@ function toast(msg){ let t=document.getElementById("toast"); if(!t){ t=document.
 /* generic modal */
 function closeModal(){ document.querySelectorAll(".mo-overlay").forEach(o=>o.remove()); }
 const CHANGELOG=[
+ {v:"2026.07.54",date:"2026-07-18",notes:["Run headers now show the PF and PM names and duty next to the PF-1st / PF-2nd label — on the run sheet and the PDF.","Below-standard justifications now appear under each run on the flown-order pages, and under each student on the AIMS tab and in the AIMS Entry Order PDF.","AIMS views now highlight only what you must enter into AIMS: cells that are not a 4 are shaded (a grade to enter) and N/A cells are shaded to set, while 4s are faded — the shading is chosen to also read on a grayscale printout.","Bolder grid lines and grade numbers for easier reading across a row."]},
  {v:"2026.07.53",date:"2026-07-16",notes:["Help menu brought current: the grading topic no longer lists N/A as a grade option (it was removed), and the duty-specific N/A is now described correctly - graded on the run where the Captain is PF and N/A on the other run. To mark a whole task not observed, use the column header, as the Help's 'N/A cells' topic explains."]},
  {v:"2026.07.52",date:"2026-07-16",notes:["Removed the N/A button from the individual grade picker. Every graded element on a task now takes a real grade (5 through 1). If an entire task wasn't observed, mark it N/A from the column header with a reason, as before. This prevents accidental single-cell N/A entries - a graded element that applies always needs a grade."]},
  {v:"2026.07.51",date:"2026-07-15",notes:["Fixed duty-specific maneuvers (e.g., RTO, CAT III / Autoland items) in a CA/FO pairing: they now grade correctly when the First Officer is PF 1st. Previously they only graded when the Captain was PF 1st and showed Not Required on every run otherwise. They now grade on the run where the Captain is PF and the First Officer is PM, whichever crew order you enter and after a Swap. CA/CA, FO/FO, and Captain-first CA/FO pairings are unchanged."]},
@@ -2579,6 +2608,39 @@ function prJustText(ex){
   })));
   return out;
 }
+function prJustTextRun(ex, run){
+  const events = MT_EVENTS; const allRoles=[...PF_TAG_ROLES,...PM_TAG_ROLES]; const out=[];
+  events.forEach(ev=> allRoles.forEach(role=>{
+    const v=state[key(ex,run,ev.code,role)];
+    if(v!==undefined && BELOW.has(v)){
+      const rec=justCell[jkeyOf(ex,run,ev.code,role)]||{stds:[],note:""};
+      const stds=(TASK_STANDARDS[ev.code]||{})[baseRole(role)]||[];
+      const sel=(rec.stds||[]).map(i=>stds[i]).filter(Boolean);
+      let line="\u2022 "+ev.code+" "+ev.nm+" \u00b7 "+roleTag(role)+" ("+v+")";
+      if(sel.length) line += " \u2014 "+sel.join("; ");
+      if(rec.note && rec.note.trim()) line += " \u2014 Note: "+rec.note.trim();
+      out.push(line);
+    }
+  }));
+  return out;
+}
+function prJustForStudent(ex, pfR, pmR){
+  const events = MT_EVENTS; const out=[];
+  const scan=(run, roles)=> events.forEach(ev=> roles.forEach(role=>{
+    const v=state[key(ex,run,ev.code,role)];
+    if(v!==undefined && BELOW.has(v)){
+      const rec=justCell[jkeyOf(ex,run,ev.code,role)]||{stds:[],note:""};
+      const stds=(TASK_STANDARDS[ev.code]||{})[baseRole(role)]||[];
+      const sel=(rec.stds||[]).map(i=>stds[i]).filter(Boolean);
+      let line="\u2022 "+ev.code+" "+ev.nm+" \u00b7 "+roleTag(role)+" ("+v+")";
+      if(sel.length) line += " \u2014 "+sel.join("; ");
+      if(rec.note && rec.note.trim()) line += " \u2014 Note: "+rec.note.trim();
+      out.push(line);
+    }
+  }));
+  scan(pfR, PF_TAG_ROLES); scan(pmR, PM_TAG_ROLES);
+  return out;
+}
 function makePdf(){
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({orientation:"landscape", unit:"pt", format:"letter"});
@@ -2603,12 +2665,12 @@ function makePdf(){
     [1,2].forEach(run=>{
       if(y>470){ doc.addPage(); y=M; }
       doc.setFontSize(10); doc.setFont(undefined,"bold");
-      doc.text(`${ex} — Run ${run}  (${run===1?"PF = PF 1st · PM = PF 2nd":"PF = PF 2nd · PM = PF 1st"})`, M, y+10); y+=16;
+      { const _pfPk=run===1?"pf1st":"pf2nd", _pmPk=run===1?"pf2nd":"pf1st"; const _nm=(pk)=>(person[pk].name||"—")+" ("+duty[pk]+")"; doc.text(ex+" — Run "+run+"  ("+(run===1?"PF = PF 1st · PM = PF 2nd":"PF = PF 2nd · PM = PF 1st")+")     PF: "+_nm(_pfPk)+" · PM: "+_nm(_pmPk), M, y+10); } y+=16;
       const head=[["Grade Item", ...events.map(ev=>ev.code+"\n"+ev.nm)]];
       const body=rows.map(([role,label])=> [label, ...events.map(ev=> prCell(ex,run,ev,role).t)]);
       doc.autoTable({
         head, body, startY:y, margin:{left:M,right:M},
-        styles:{fontSize:7, halign:"center", valign:"middle", cellPadding:2, lineColor:[150,150,150], lineWidth:0.5},
+        styles:{fontSize:7, halign:"center", valign:"middle", cellPadding:2, lineColor:[70,70,70], lineWidth:1, fontStyle:"bold"},
         headStyles:{fillColor:[231,237,245], textColor:[30,58,95], fontSize:7, halign:"center"},
         columnStyles:{0:{halign:"left", fontStyle:"bold", cellWidth:96}},
         didParseCell:(dd)=>{
@@ -2621,17 +2683,18 @@ function makePdf(){
         }
       });
       y=doc.lastAutoTable.finalY + 12;
+      const jr=prJustTextRun(ex,run);
+      if(jr.length){
+        if(y>540){ doc.addPage(); y=M; }
+        doc.setFontSize(9); doc.setFont(undefined,"bold"); doc.setTextColor(163,39,27);
+        doc.text(ex+" Run "+run+" — Below-Standard Justification", M, y); y+=13;
+        doc.setTextColor(0,0,0); doc.setFontSize(8); doc.setFont(undefined,"normal");
+        jr.forEach(function(line){ var wrapped=doc.splitTextToSize(line, 730);
+          if(y + wrapped.length*10 > 560){ doc.addPage(); y=M; }
+          doc.text(wrapped, M+8, y); y += wrapped.length*10 + 3; });
+        y+=6;
+      }
     });
-    const jt=prJustText(ex);
-    if(jt.length){
-      if(y>540){ doc.addPage(); y=M; }
-      doc.setFontSize(10); doc.setFont(undefined,"bold"); doc.setTextColor(163,39,27);
-      doc.text(`${ex} — Below-Standard Justification`, M, y); y+=14;
-      doc.setTextColor(0,0,0); doc.setFontSize(8); doc.setFont(undefined,"normal");
-      jt.forEach(line=>{ const wrapped=doc.splitTextToSize(line, 730);
-        if(y + wrapped.length*10 > 560){ doc.addPage(); y=M; }
-        doc.text(wrapped, M, y); y += wrapped.length*10 + 3; });
-    }
   });
   // ---- AIMS entry order tables (per student, PF then PM) ----
   (function(){
@@ -2641,7 +2704,7 @@ function makePdf(){
     doc.setFontSize(13); doc.setFont(undefined,"bold"); doc.setTextColor(30,58,95);
     doc.text("AIMS Entry Order", M, y); y+=15;
     doc.setFontSize(8.5); doc.setFont(undefined,"normal"); doc.setTextColor(90,90,90);
-    doc.text("Enter into AIMS in this order \u2014 each student, PF then PM. Seat Support is not graded in AIMS.", M, y); y+=15; doc.setTextColor(0,0,0);
+    doc.text("Enter into AIMS in this order \u2014 each student, PF then PM. Seat Support is not graded in AIMS.", M, y); y+=15; doc.setTextColor(0,0,0); doc.setFontSize(8); doc.setFont(undefined,"italic"); doc.setTextColor(90,90,90); doc.text("Reading for AIMS entry: shaded = enter in AIMS (gold = a grade, blue = N/A)   \u00b7   faded = a 4, leave it.  Shading also prints in grayscale.", M, y); y+=14; doc.setFont(undefined,"normal"); doc.setTextColor(0,0,0);
     ["MT"].forEach(ex=>{
       const events=MT_EVENTS; const order=AIMS_ORDER[ex]||events.map(e=>e.code);
       [["pf1st","Student 1"],["pf2nd","Student 2"]].forEach(([pk,slab])=>{
@@ -2651,20 +2714,31 @@ function makePdf(){
         doc.text(ex+" \u00b7 "+slab+" \u2014 "+nm+" ("+duty[pk]+")    PF: "+seatFull(pfR,pk)+"  /  PM: "+seatFull(pmR,pk)+"    Take "+take[pk], M, y+10); y+=15;
         const pfBody=order.map(c=>{ const ev=evByCode(events,c); return [ev.code+" "+ev.nm, prCell(ex,pfR,ev,"H").t, prCell(ex,pfR,ev,"SOP").t, prCell(ex,pfR,ev,"A").t, prCell(ex,pfR,ev,"CRM").t]; });
         doc.autoTable({ head:[["PF \u00b7 Run "+pfR,"H","SOP","A","CRM"]], body:pfBody, startY:y, margin:{left:M,right:M},
-          styles:{fontSize:7,halign:"center",valign:"middle",cellPadding:2,lineColor:[150,150,150],lineWidth:0.5},
+          styles:{fontSize:7,halign:"center",valign:"middle",cellPadding:2,lineColor:[70,70,70], lineWidth:1, fontStyle:"bold"},
           headStyles:{fillColor:[231,237,245],textColor:[30,58,95],fontSize:7,halign:"center"},
           columnStyles:{0:{halign:"left",fontStyle:"bold",cellWidth:230}},
-          didParseCell:(dd)=>{ if(dd.section==="body"&&dd.column.index>0){ const ev=evByCode(events,order[dd.row.index]); const role=["","H","SOP","A","CRM"][dd.column.index]; const c=prCell(ex,pfR,ev,role); if(c.na){dd.cell.styles.fillColor=[229,229,229];dd.cell.styles.textColor=[150,150,150];} else if(c.below){dd.cell.styles.textColor=[179,38,30];dd.cell.styles.fontStyle="bold";} } }
+          didParseCell:(dd)=>{ if(dd.section==="body"&&dd.column.index>0){ const ev=evByCode(events,order[dd.row.index]); const role=["","H","SOP","A","CRM"][dd.column.index]; const c=prCell(ex,pfR,ev,role); if(c.na){dd.cell.styles.fillColor=[174,195,222];dd.cell.styles.textColor=[18,28,55];dd.cell.styles.fontStyle="bold";} else if(c.t==="4"){dd.cell.styles.textColor=[176,186,199];dd.cell.styles.fontStyle="normal";} else {dd.cell.styles.fillColor=[201,168,74];dd.cell.styles.fontStyle="bold";dd.cell.styles.textColor=c.below?[130,20,15]:[20,20,20];} } }
         });
         y=doc.lastAutoTable.finalY+6;
         const pmBody=order.map(c=>{ const ev=evByCode(events,c); return [ev.code+" "+ev.nm, prCell(ex,pmR,ev,"SOP_PM").t, prCell(ex,pmR,ev,"CRM_PM").t]; });
         doc.autoTable({ head:[["PM \u00b7 Run "+pmR,"SOP","CRM"]], body:pmBody, startY:y, margin:{left:M,right:M},
-          styles:{fontSize:7,halign:"center",valign:"middle",cellPadding:2,lineColor:[150,150,150],lineWidth:0.5},
+          styles:{fontSize:7,halign:"center",valign:"middle",cellPadding:2,lineColor:[70,70,70], lineWidth:1, fontStyle:"bold"},
           headStyles:{fillColor:[231,237,245],textColor:[30,58,95],fontSize:7,halign:"center"},
           columnStyles:{0:{halign:"left",fontStyle:"bold",cellWidth:230}},
-          didParseCell:(dd)=>{ if(dd.section==="body"&&dd.column.index>0){ const ev=evByCode(events,order[dd.row.index]); const role=["","SOP_PM","CRM_PM"][dd.column.index]; const c=prCell(ex,pmR,ev,role); if(c.na){dd.cell.styles.fillColor=[229,229,229];dd.cell.styles.textColor=[150,150,150];} else if(c.below){dd.cell.styles.textColor=[179,38,30];dd.cell.styles.fontStyle="bold";} } }
+          didParseCell:(dd)=>{ if(dd.section==="body"&&dd.column.index>0){ const ev=evByCode(events,order[dd.row.index]); const role=["","SOP_PM","CRM_PM"][dd.column.index]; const c=prCell(ex,pmR,ev,role); if(c.na){dd.cell.styles.fillColor=[174,195,222];dd.cell.styles.textColor=[18,28,55];dd.cell.styles.fontStyle="bold";} else if(c.t==="4"){dd.cell.styles.textColor=[176,186,199];dd.cell.styles.fontStyle="normal";} else {dd.cell.styles.fillColor=[201,168,74];dd.cell.styles.fontStyle="bold";dd.cell.styles.textColor=c.below?[130,20,15]:[20,20,20];} } }
         });
         y=doc.lastAutoTable.finalY+12;
+        { const sj=prJustForStudent(ex, pfR, pmR);
+          if(sj.length){
+            const ph=doc.internal.pageSize.getHeight();
+            if(y+(sj.length+1)*11 > ph-30){ doc.addPage(); y=M; }
+            doc.setFontSize(8); doc.setFont(undefined,"bold"); doc.setTextColor(163,39,27);
+            doc.text("Below-standard comments \u2014 enter with this student:", M, y); y+=12;
+            doc.setTextColor(0,0,0); doc.setFont(undefined,"normal"); doc.setFontSize(7.5);
+            sj.forEach(function(line){ var wr=doc.splitTextToSize(line, 730); if(y+wr.length*9 > ph-28){ doc.addPage(); y=M; } doc.text(wr, M+8, y); y+=wr.length*9+2; });
+            y+=8;
+          }
+        }
       });
     });
   })();
@@ -2794,7 +2868,7 @@ function buildPrintReport(){
     `<div class="pr-meta">PF 2nd: <b>${esc(person.pf2nd.name||"—")}</b> (Emp ${esc(person.pf2nd.emp||"—")}, ${esc(duty.pf2nd)})</div></div>`;
   ["MT"].forEach(ex=>{
     out+=`<h2 class="pr-ex">${ex}</h2>`;
-    [1,2].forEach(run=>{ out+=`<div class="pr-run">Run ${run} — ${run===1?"PF = PF 1st · PM = PF 2nd":"PF = PF 2nd · PM = PF 1st"}</div>`+prGrid(ex,run); });
+    [1,2].forEach(run=>{ const _pf=run===1?"pf1st":"pf2nd",_pm=run===1?"pf2nd":"pf1st"; const _n=(k)=>(person[k].name||"—")+" ("+duty[k]+")"; out+=`<div class="pr-run">Run ${run} — ${run===1?"PF = PF 1st · PM = PF 2nd":"PF = PF 2nd · PM = PF 1st"}    ·    PF: ${_n(_pf)} · PM: ${_n(_pm)}</div>`+prGrid(ex,run); });
     out+=prJust(ex);
   });
   return out;
