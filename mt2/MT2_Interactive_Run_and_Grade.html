@@ -958,7 +958,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var n,r,i,a,
 const GRADES = ["5","4","3","2","2-RP","2-RF","1","1-RP","1-RF","N/A"];
 const BELOW = new Set(["3","2","2-RP","2-RF","1","1-RP","1-RF"]);
 /* ---- document version (bump on each update) ---- */
-const VERSION = "2026.10.8";
+const VERSION = "2026.10.11";
 const VERSION_DATE = "2026-10-05";
 /* ---- data models ---- */
 // rows present per exercise, in AIMS/PF then PM order
@@ -1009,6 +1009,8 @@ const simDisc = {fstd:"", items:[]};
 /* ---- FSTD (simulator) selection — B747-400 / B747-8 FFS from the AQP Application FFS list.
    When the tool is tied into AIMS, fstdSel will be set automatically from the AIMS Facility. ---- */
 const FSTD_LIST = [
+  {faa:"722",  short:"Atlas Miami",        loc:"Atlas Air Inc. Training Center, Miami, FL",     type:"B747-400", trainer:"1",   level:"C"},
+  {faa:"1092", short:"Atlas Miami",        loc:"Atlas Air Inc. Training Center, Miami, FL",     type:"B747-400", trainer:"2",   level:"D"},
   {faa:"584",  short:"Boeing Miami",       loc:"Boeing Training and Flight Services, Miami, FL", type:"B747-400", trainer:"3",   level:"D"},
   {faa:"1091", short:"Boeing Miami",       loc:"Boeing Training and Flight Services, Miami, FL", type:"B747-400", trainer:"N/A", level:"D"},
   {faa:"1264", short:"Boeing Miami",       loc:"Boeing Training and Flight Services, Miami, FL", type:"B747-8",   trainer:"N/A", level:"D"},
@@ -2515,6 +2517,7 @@ function toast(msg){ let t=document.getElementById("toast"); if(!t){ t=document.
 /* generic modal */
 function closeModal(){ document.querySelectorAll(".mo-overlay").forEach(o=>o.remove()); }
 const CHANGELOG=[
+ {v:"2026.10.11",date:"2026-10-05",notes:["FSTD list: added the Atlas Air Training Center Miami simulators — SIM 1 (FAA 722, Level C) and SIM 2 (FAA 1092, Level D) — from AQP Application Table B.1.6."]},
  {v:"2026.10.8",date:"2026-10-05",notes:["Chart file names updated to match the uploaded SMGCS and ILS 7L charts, so all four chart buttons now open."]},
  {v:"2026.10.7",date:"2026-10-04",notes:["New app: CQMT2.1 SPOT (lesson guide Rev 2026.03.05) — 10 circuits, 17 graded tasks, with the same engine as the MV and MT tools (comments on any grade, AIMS Module Attempt Status, FSTD selector, Sim discrepancies, Seat Support notes, PDF).","Pairing rules built in: Circuit 1 taxi-out graded on the first half (Run 1) only; Circuit 9 taxi-in on the second half (Run 2) only; Circuit 6 CAT II is a crew task (the CA graded as PF, the FO graded as PM — matches the pairing table for CA/FO, CA/CA, FO/FO and Seat Support); Circuit 10 First Look (2.6, 7.6) only when a Captain is PF. Cells that don't apply are N/A automatically.","Lesson-guide pop-ups reproduce the CQMT2.1 guide (SA, IOS setup, verbatim ATC, IP notes). Below-standard checklists and Performance Statement references use the AQP 747 Pilot Qualification Standards (6.2.1, 6.2.4, 7.3.1 and 7.3.2 use their TPO standards), plus the guide’s common errors. Automation is N/A for 1.4.2, 8.1.3 and 7.6 per the qualification standards.","Charts: ILS 25L is built in. LADYJ 4 RNAV departure, LAX SMGCS and ILS 7L load from the MT2 charts folder (Wi-Fi needed the first time); until they are uploaded the button says to use the pEFB."]},
 ];
