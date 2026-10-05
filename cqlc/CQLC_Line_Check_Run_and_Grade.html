@@ -76,6 +76,18 @@ textarea{width:100%;min-height:54px}
 .modal{background:#fff;border-radius:12px;max-width:640px;width:92%;max-height:84vh;overflow:auto;padding:14px 16px}
 .toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:#16273f;color:#fff;padding:9px 16px;border-radius:20px;z-index:60;font-weight:700}
 .hide{display:none}
+.btn.notify{border-color:#9db4d6;background:#eef3fa;color:#2b6fff}
+.btn.notify.req{background:#d63c30;border-color:#b83227;color:#fff;animation:notifpulse 1.5s infinite}
+@keyframes notifpulse{0%,100%{box-shadow:0 0 0 0 rgba(214,60,48,.55)}50%{box-shadow:0 0 0 6px rgba(214,60,48,0)}}
+.em-card{border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:12px}
+.em-h{font-size:13px;font-weight:800;color:#1e3a5f;margin:6px 0 6px}
+.em-tag{font-size:11px;font-weight:800;color:#a3271b;background:#fdecea;border:1px solid #e6a49c;border-radius:999px;padding:2px 8px;margin-left:6px}
+.em-pre{white-space:pre-wrap;font-family:SFMono-Regular,Menlo,Consolas,monospace;font-size:11px;color:#37424f;background:#f7f9fc;border:1px solid var(--line);border-radius:8px;padding:8px 10px;margin:0 0 6px;max-height:260px;overflow:auto}
+.em-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.em-btn{border:1px solid #9db4d6;background:#eef3fa;color:#2b6fff;border-radius:8px;padding:7px 12px;font-size:12px;font-weight:800;cursor:pointer}
+.em-meta{font-size:12px;color:#37424f;margin:0 0 6px;line-height:1.5}
+.em-lbl{font-weight:700;color:#1e3a5f}
+.em-hint{font-size:12px;color:#5a5030;background:#fbf7ec;border:1px solid #ecdcae;border-radius:8px;padding:8px 10px;margin-bottom:12px;font-weight:600}
 @media print{.docbar,.tabs,.tools{display:none}}
 </style></head>
 <body>
@@ -85,7 +97,7 @@ textarea{width:100%;min-height:54px}
  <div class="tabs" id="tabs"></div>
  <div class="tools">
   <button class="btn" data-tb="save">Save</button><button class="btn" data-tb="saved">Saved sessions</button>
-  <button class="btn" data-tb="new">New line check</button><button class="btn pri" data-tb="pdf">Save as PDF</button>
+  <button class="btn" data-tb="new">New line check</button><button class="btn notify" data-tb="notify" id="notifyBtn">Email notification</button><button class="btn pri" data-tb="pdf">Save as PDF</button>
  </div>
  <div id="view"></div>
 </div>
@@ -485,9 +497,9 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var n,r,i,a,
 
 <script>
 "use strict";
-const VERSION="2026.10.10", VERSION_DATE="2026-10-05";
+const VERSION="2026.10.12", VERSION_DATE="2026-10-05";
 const CHANGELOG=[
- {v:"2026.10.10",date:"2026-10-05",notes:["ACM 1 / ACM 2 are not graded — documents (certificate & publications) check only, seat Jumpseat / rest. They no longer appear on the Grade, Results or AIMS tabs; their audit prints on the briefing page of the PDF.","Takeoff and landing credit goes to the PF only.","New app: CQLC Pilot Line Check (grade sheet 2026-08-26). Briefing checklist with read-aloud scripts, flight and crew (2–4 crewmembers, one AIMS form each), phase grading with conditions, PF/PM per task that follows the flight, results with the AQPM 4.3.9 rules, AIMS entry view per crewmember, and PDF."]}
+ {v:"2026.10.12",date:"2026-10-05",notes:["Grade 2 debrief remediation (AQPM 4.3.9): ticking it pre-fills the Phase/TPO with the task(s) graded 2; the overall grade becomes Satisfactory (no email required) once the Phase/TPO and justification are documented. It shows on the Results and AIMS tabs and prints on the PDF.","Email notification button: when a crewmember is Unsatisfactory or Incomplete it turns red (⚠ Email required) and builds a ready-to-copy email (subject + body) for Training Records, the 747 Fleet Captain and Training Scheduling, with the items graded 2 or 1, comments, and the AQPM 4.3.9 / 4.3.14 or 4.3.4 action.","ACM 1 / ACM 2 are not graded — documents (certificate & publications) check only, seat Jumpseat / rest. They no longer appear on the Grade, Results or AIMS tabs; their audit prints on the briefing page of the PDF.","Takeoff and landing credit goes to the PF only.","New app: CQLC Pilot Line Check (grade sheet 2026-08-26). Briefing checklist with read-aloud scripts, flight and crew (2–4 crewmembers, one AIMS form each), phase grading with conditions, PF/PM per task that follows the flight, results with the AQPM 4.3.9 rules, AIMS entry view per crewmember, and PDF."]}
 ];
 const HSAC=["H","SOP","A","CRM"], SC=["SOP","CRM"];
 const DIMN={H:"Handling",SOP:"SOP",A:"Automation",CRM:"CRM"};
@@ -590,6 +602,7 @@ function suggest(mk){
   let s, why=[];
   if(has1){ s="Unsatisfactory"; why.push("A grade of 1 requires training and results in an unsatisfactory LC (AQPM 4.3.14)."); }
   else if(has2 && !r.remed){ s="Unsatisfactory"; why.push("A grade of 2 results in an unsatisfactory LC unless remediated by debrief (AQPM 4.3.9)."); }
+  else if(has2 && r.remed && !((r.remPhase||"").trim() && (r.remJust||"").trim())){ s="Unsatisfactory"; why.push("Debrief remediation (AQPM 4.3.9) is checked — document the task (Phase/TPO) and the justification below to make the overall grade Satisfactory."); }
   else s="Satisfactory";
   if(incomplete){ why.unshift("No takeoff and/or landing was accomplished on this leg (e.g., block turn back, diversion, cancellation) — the LC is only complete with at least one takeoff and one landing (Line Check Completion Criteria)."); if(s==="Satisfactory") s="Incomplete"; }
   return {s, why, has1, has2, threes, counts:c};
@@ -605,6 +618,7 @@ function render(){
     b.onclick=()=>{TAB=k; render(); window.scrollTo(0,0);}; tb.appendChild(b); });
   const v=document.getElementById("view"); v.innerHTML="";
   ({brief:vBrief,crew:vCrew,grade:vGrade,results:vResults,aims:vAims})[TAB](v);
+  try{ updateNotifyBtn(); }catch(e){}
 }
 function el(html){ const d=document.createElement("div"); d.innerHTML=html; return d.firstElementChild; }
 
@@ -741,9 +755,13 @@ function vResults(v){
     if(sg.has2 && !sg.has1){
       const b=el(`<div class="infobox"><label style="font-weight:700"><input type="checkbox" data-rc> Grade 2 remediated by debrief (AQPM 4.3.9) — Check Pilot discretion; allows an overall Satisfactory</label>
         <div class="row" style="margin-top:6px"><label class="f">Phase/TPO<input type="text" size="18" data-rp></label><label class="f" style="flex:1">Justification<input type="text" style="width:100%" data-rj></label></div></div>`);
-      const rc=b.querySelector("[data-rc]"); rc.checked=!!r.remed; rc.onchange=()=>{ r.remed=rc.checked; save(); render(); };
+      const rc=b.querySelector("[data-rc]"); rc.checked=!!r.remed; rc.onchange=()=>{ r.remed=rc.checked;
+        if(r.remed && !(r.remPhase||"").trim()){ const tw=[]; allTasks().forEach(t=>{ if(dutyOf(t,m.k)!=="OFF" && dimsFor(t,m.k).some(d=>{ const v=gradeOf(t,m.k,d); return v==="2"||v==="2-RF"; })) tw.push(t.nm); }); r.remPhase=tw.join("; "); }
+        save(); render(); };
       const rp=b.querySelector("[data-rp]"), rj=b.querySelector("[data-rj]"); rp.value=r.remPhase||""; rj.value=r.remJust||"";
+      rp.onchange=()=>{ r.remPhase=rp.value; save(); render(); }; rj.onchange=()=>{ r.remJust=rj.value; save(); render(); };
       rp.oninput=()=>{ r.remPhase=rp.value; save(); }; rj.oninput=()=>{ r.remJust=rj.value; save(); };
+      if(r.remed) b.appendChild(el(`<div class="sub" style="margin-top:6px">Remediated by debrief — no other LC required and no email notification is needed once the task and justification are documented.</div>`));
       rem.appendChild(b);
     }
     const cm=card.querySelector("[data-cm]"); cm.value=r.comments||""; cm.oninput=()=>{ r.comments=cm.value; save(); };
@@ -761,7 +779,7 @@ function vAims(v){
       return `<tr><td>${esc(t.nm)}</td><td><span class="pill ${d}">${d==="PF"?"Pilot Flying":d==="PM"?"Pilot Monitoring":"Not graded"}</span></td><td style="font-size:12.5px">${esc(condText(t))}</td>${dims.map(x=>`<td>${x}</td>`).join("")}</tr>`; }).join("");
     v.appendChild(el(`<div class="card aims"><h2>${esc(mlabel(m.k))} · Emp ${esc(S.crew[m.k].emp||"—")} · ${esc(S.crew[m.k].attempt)}</h2>
       <table><tr><th>Task</th><th>Duty position</th><th>Conditions</th><th>H</th><th>SOP</th><th>A</th><th>CRM</th></tr>${rows}</table>
-      <div class="sub" style="margin-top:6px">Overall: <b>${esc(overall(m.k))}</b> · Takeoffs ${counts(m.k).to} · Landings ${counts(m.k).ldg}</div></div>`));
+      <div class="sub" style="margin-top:6px">Overall: <b>${esc(overall(m.k))}</b> · Takeoffs ${counts(m.k).to} · Landings ${counts(m.k).ldg}</div>${(S.results[m.k]||{}).remed?`<div class="infobox" style="margin-top:6px"><b>Grade 2 debrief remediation (AQPM 4.3.9)</b> — Phase/TPO: ${esc((S.results[m.k]||{}).remPhase||"—")} · Justification: ${esc((S.results[m.k]||{}).remJust||"—")}</div>`:""}</div>`));
   });
 }
 
@@ -803,6 +821,52 @@ function makePdf(){
 }
 function pdfName(){ const f=S.flight; return ("CQLC_"+(f.date||"")+"_"+(f.flt||"")+"_"+(S.crew.pic.name||"PIC")).replace(/[^A-Za-z0-9_.-]+/g,"_")+".pdf"; }
 
+
+/* ---------- email notification (Unsatisfactory / Incomplete) ---------- */
+const OFFICES=["MIATCTrainingRecords@atlasair.com","MIATC747FleetCaptain@atlasair.com","MIATCTrainingScheduling@atlasair.com"];
+function buildEmailDrafts(){
+  const out=[]; const f=S.flight;
+  gradedMembers().forEach(m=>{
+    const ov=overall(m.k); if(ov!=="Unsatisfactory" && ov!=="Incomplete") return;
+    const c=S.crew[m.k]; const nm=c.name||m.label; const emp=c.emp||"—"; const r=S.results[m.k]||{}; const sg=suggest(m.k);
+    const items=[]; allTasks().forEach(t=>{ const d=dutyOf(t,m.k); if(d==="OFF") return; dimsFor(t,m.k).forEach(dim=>{ const v=gradeOf(t,m.k,dim); if(isLow(v)) items.push("  • "+t.nm+" — "+DIMN[dim]+" ("+d+") — grade "+v+(((S.comments[t.k]||{})[m.k]||"").trim()?("\n        Comment: "+((S.comments[t.k]||{})[m.k]).trim()):"")); }); });
+    const fl=(f.flt||"—")+" "+(f.dep||"—")+"–"+(f.arr||"—");
+    const subject="CQLC Line Check — "+ov+" — "+nm+" (Emp "+emp+") — Flt "+fl+" — "+(f.date||"");
+    const body=nm+" (Emp "+emp+") received an "+ov.toUpperCase()+" on the CQLC Pilot Line Check on "+(f.date||"—")+".\n\n"+
+      "Role: "+m.label+"    Duty position: "+c.duty+"    Seat: "+(c.seat||"—")+"\n"+
+      "Flight: "+fl+"    A/C: "+(f.acn||"—")+"    Block: "+(f.block||"—")+"    Flight time: "+(f.ftime||"—")+"\n"+
+      "LC designation: "+(S.lcType||"—")+"\n"+
+      "Check Pilot: "+(S.instructor.name||"—")+" (Emp "+(S.instructor.emp||"—")+")\n"+
+      "Module Attempt Status: "+(c.attempt||"—")+"\n"+
+      "Takeoffs: "+sg.counts.to+"    Landings: "+sg.counts.ldg+"\n"+
+      "Overall grade: "+ov+"\n\n"+
+      (ov==="Unsatisfactory" ?
+        ("Items graded 2 or 1:\n"+(items.join("\n")||"  • (see attached grade sheet)")+"\n\n"+
+         (r.comments?("Check Pilot comments: "+r.comments+"\n\n"):"")+
+         "ACTION REQUIRED (AQPM 4.3.9 / 4.3.14): Remove the crewmember from line operations until the approved remediation has been successfully completed. "+
+         "The Fleet Standards Captain, in concert with the Director of Training, determines whether remediation occurs via debrief, ground school, or simulation, followed by another LC. "+
+         "A second unsatisfactory LC results in referral to the Training Review Board.\n")
+       : ("Reason: the minimum completion criteria were not met (at least one takeoff and one landing, with all associated phases of flight)"+(r.comments?(" — "+r.comments):"")+".\n\n"+
+         "ACTION REQUIRED: Mark the LC Incomplete and reschedule per AQPM 4.3.4.\n"))+
+      "\nNotify: Scheduling, Standards Captain, and Director of Training.";
+    out.push({nm,emp,label:ov,to:OFFICES.join(", "),subject,body});
+  });
+  return out;
+}
+function copyText(t){ try{ if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(t).then(()=>toast("Copied to clipboard")).catch(()=>fallbackCopy(t)); return; } }catch(e){} fallbackCopy(t); }
+function fallbackCopy(t){ const ta=document.createElement("textarea"); ta.value=t; ta.style.position="fixed"; ta.style.opacity="0"; document.body.appendChild(ta); ta.focus(); ta.select(); try{ document.execCommand("copy"); toast("Copied"); }catch(e){ toast("Select and copy manually"); } ta.remove(); }
+function openEmailDrafts(){
+  const drafts=buildEmailDrafts(); const w=document.createElement("div");
+  if(!drafts.length){ w.innerHTML="<div class='sub'>No Unsatisfactory or Incomplete result — no notification needed.</div>"; modal("Email — copy & send", w); return; }
+  w.appendChild(el(`<div class="em-hint">Start a new email to the offices shown. Tap ‘Copy subject’ and paste it into the subject line, then ‘Copy email body’ and paste it as the message. Attach the PDF from Save as PDF.</div>`));
+  drafts.forEach(dr=>{
+    const card=el(`<div class="em-card"><div class="em-h">CQLC · ${esc(dr.nm)} <span class="em-tag">${esc(dr.label)}</span></div><div class="em-meta"><div><span class="em-lbl">Send to:</span> ${esc(dr.to)}</div><div><span class="em-lbl">Subject:</span> ${esc(dr.subject)}</div></div><pre class="em-pre"></pre><div class="em-row"><button class="em-btn" data-s>Copy subject</button><button class="em-btn" data-b>Copy email body</button></div></div>`);
+    card.querySelector("pre").textContent=dr.body; card.querySelector("[data-s]").onclick=()=>copyText(dr.subject); card.querySelector("[data-b]").onclick=()=>copyText(dr.body);
+    w.appendChild(card);
+  });
+  modal("Email — copy & send", w);
+}
+function updateNotifyBtn(){ const b=document.getElementById("notifyBtn"); if(!b) return; let n=0; try{ n=buildEmailDrafts().length; }catch(e){} b.classList.toggle("req",n>0); b.textContent=n>0?("⚠ Email required ("+n+")"):"Email notification"; }
 /* ---------- toolbar ---------- */
 function modal(title, inner, buttons){
   const bg=el(`<div class="modalbg"><div class="modal"><h2 style="margin:0 0 8px;color:#1e3a5f">${esc(title)}</h2><div data-b></div><div style="text-align:right;margin-top:12px" data-f></div></div></div>`);
@@ -818,6 +882,7 @@ document.querySelectorAll("[data-tb]").forEach(b=>b.onclick=()=>{
     all.forEach((s,i)=>{ const r=el(`<div class="chk"><div style="flex:1"><b>${esc(s.label)}</b><div class="sub">${esc(new Date(s.at).toLocaleString())}</div></div><button class="btn">Open</button></div>`); r.querySelector("button").onclick=()=>{ S=Object.assign(blank(),JSON.parse(JSON.stringify(s.data))); save(); document.querySelector(".modalbg").remove(); render(); }; d.appendChild(r); });
     modal("Saved sessions", d); }
   if(a==="new"){ modal("Start a new line check?","<div>This clears the current grades and crew (the check pilot is kept). Save first if you need this session.</div>",[{l:"Cancel"},{l:"New line check",p:true,f:()=>{ const ins=S.instructor; S=blank(); S.instructor=ins; save(); TAB="brief"; render(); }}]); }
+  if(a==="notify"){ openEmailDrafts(); }
   if(a==="pdf"){ try{ makePdf().save(pdfName()); }catch(e){ alert("PDF error: "+e.message); } }
 });
 document.getElementById("upd").onclick=()=>{ save(); location.replace(location.pathname+"?v="+Date.now()); };
