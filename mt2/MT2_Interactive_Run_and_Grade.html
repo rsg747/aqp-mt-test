@@ -129,6 +129,10 @@
   /* clickable lesson-guide nodes */
   .prof-hit{fill:transparent;cursor:pointer}
   .prof-hit:hover{fill:rgba(43,111,255,.10)}
+
+  /* ---- current position on the profile (follows the active grade line) ---- */
+  .prof-ring.cur{stroke:#16a34a !important;stroke-width:3.2;stroke-dasharray:none;opacity:1;fill:rgba(34,197,94,.25)}
+  .prof-lblbg.cur{fill:#dcfce7;stroke:#16a34a;stroke-width:1.8}
   .prof-ring{fill:none;stroke:#2b6fff;stroke-width:1.2;stroke-dasharray:2.4 2.4;opacity:.55;pointer-events:none}
   body.run2 .prof-ring{stroke:var(--r2-deep)}
   .prof-hint{fill:#2b6fff;font:800 9px -apple-system,Arial,sans-serif;letter-spacing:.02em}
@@ -958,7 +962,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var n,r,i,a,
 const GRADES = ["5","4","3","2","2-RP","2-RF","1","1-RP","1-RF","N/A"];
 const BELOW = new Set(["3","2","2-RP","2-RF","1","1-RP","1-RF"]);
 /* ---- document version (bump on each update) ---- */
-const VERSION = "2026.10.11";
+const VERSION = "2026.10.13";
 const VERSION_DATE = "2026-10-05";
 /* ---- data models ---- */
 // rows present per exercise, in AIMS/PF then PM order
@@ -1757,12 +1761,12 @@ function buildProfile(ex){
   });
   // clickable nodes get a dashed ring so the IE knows they open the guide
   if(clickable){
-    nodes.forEach(n=> add("circle",{cx:n.cx, cy:n.cy, r:11, class:"prof-ring"}) );
+    nodes.forEach((n,idx)=> add("circle",{cx:n.cx, cy:n.cy, r:11, "data-node":idx, class:"prof-ring"}) );
   }
   nodes.forEach(n=> svg.appendChild(planeGlyph(n.cx,n.cy)) );
-  nodes.forEach(n=>{
+  nodes.forEach((n,idx)=>{
     const w=n._lw, h=n._dnExt + 13;
-    add("rect",{x:n.cx-w/2, y:n._ly-9, width:w, height:h, rx:3, class:"prof-lblbg"});
+    add("rect",{x:n.cx-w/2, y:n._ly-9, width:w, height:h, rx:3, "data-node":idx, class:"prof-lblbg"});
     let yy=n._ly;
     n._lines.forEach(ln=>{ add("text",{x:n.cx,y:yy,"text-anchor":"middle",
                   class:"prof-lbl"+(n.crit?" crit":"")},ln); yy+=11; });
@@ -1953,6 +1957,7 @@ function perfRefHTML(code){
   return h;
 }
 function openLessonGuide(ex, idx){
+  try{ markNode(ex, idx); }catch(e){}
   const LG   = MT_LG;
   const PROF = MT_PROFILE;
   const data = LG[idx];
@@ -2280,18 +2285,43 @@ function openGradePicker(box, k, ex, ev, role, run, sheet){
   // tap (which becomes a click on touch) can't immediately dismiss it
   setTimeout(()=>{ if(gpOpen && gpOpen.overlay===overlay) overlay.addEventListener("click", closeGradePicker); }, 60);
 }
+
+/* ---- current position: profile point <-> active grade column (two-way) ---- */
+let curNodes={}, hotCols={}, hotNote={};
+function _lgFor(ex){ if(ex==="MT" && typeof MT_LG!=="undefined") return MT_LG; if(ex==="SPOT" && typeof SPOT_LG!=="undefined") return SPOT_LG; return (typeof MV_LG!=="undefined")?MV_LG:{}; }
+function _evsFor(ex){ if(ex==="MT" && typeof MT_EVENTS!=="undefined") return MT_EVENTS; if(ex==="SPOT" && typeof SPOT_EVENTS!=="undefined") return SPOT_EVENTS; return (typeof MV_EVENTS!=="undefined")?MV_EVENTS:[]; }
+function _nodeCodes(ex,idx){ const d=_lgFor(ex)[idx]; if(!d||!d.codes) return []; return String(d.codes).split(/[\s\/,]+/).filter(c=>/^\d/.test(c)); }
+function _nodesForCode(ex,code){ const L=_lgFor(ex), out=[]; Object.keys(L).forEach(k=>{ if(_nodeCodes(ex,+k).indexOf(code)>=0) out.push(+k); }); return out; }
+function applyProfileMarks(){ const set=new Set(curNodes[EX]||[]); document.querySelectorAll('.profhost [data-node]').forEach(el=>el.classList.toggle('cur', set.has(+el.dataset.node))); }
+function _gridTable(){ return document.querySelector('#stage table.grid') || document.querySelector('table.grid'); }
+function setHotCols(cis,label){
+  const t=_gridTable(); if(!t) return;
+  hotCols[EX]=cis.slice(); hotCol[EX]=cis.length?cis[0]:null; if(label!=null) hotNote[EX]=label;
+  t.querySelectorAll('[data-col]').forEach(el=>el.classList.toggle('col-hot', cis.indexOf(+el.dataset.col)>=0));
+  const note=t.closest('.sheet') && t.closest('.sheet').querySelector('[data-note]');
+  if(note && cis.length && hotNote[EX]) note.innerHTML=hotNote[EX];
+}
+function markNode(ex,idx){
+  if(ex!==EX) return;
+  curNodes[ex]=[idx]; applyProfileMarks();
+  const codes=_nodeCodes(ex,idx), evs=_evsFor(ex);
+  const cis=codes.map(c=>evs.findIndex(e=>e.code===c)).filter(i=>i>=0);
+  if(cis.length) setHotCols(cis, `Active grade line: <b>${codes.join(" / ")}</b> · selected on the profile — tap a header to change.`);
+}
+function reapplyMarks(){ applyProfileMarks(); if((hotCols[EX]||[]).length) setHotCols(hotCols[EX]); }
 /* ---- column lock/highlight ---- */
 let hotCol={MT:null};
 function toggleCol(table,ci,ev){
   const cur=hotCol[EX];
   if(cur===ci){ openColMenu(table,ci,ev); return; }
   hotCol[EX]=ci;
+  hotCols[EX]=[ci]; hotNote[EX]=null; try{ curNodes[EX]=_nodesForCode(EX, ev.code); applyProfileMarks(); }catch(e){}
   table.querySelectorAll('[data-col]').forEach(el=>{ el.classList.toggle('col-hot', +el.dataset.col===ci); });
   const note=table.closest('.sheet').querySelector('[data-note]');
   if(note) note.innerHTML=`Active grade line: <b>${ev.code} — ${ev.nm}</b> · tap the header again for column options.`;
 }
 function releaseCol(table){
-  hotCol[EX]=null;
+  hotCol[EX]=null; hotCols[EX]=[]; curNodes[EX]=[]; try{ applyProfileMarks(); }catch(e){}
   table.querySelectorAll('[data-col]').forEach(el=>el.classList.remove('col-hot'));
   const note=table.closest('.sheet').querySelector('[data-note]');
   if(note) note.innerHTML="Tap an event header to lock its column as the active grade line.";
@@ -2517,6 +2547,7 @@ function toast(msg){ let t=document.getElementById("toast"); if(!t){ t=document.
 /* generic modal */
 function closeModal(){ document.querySelectorAll(".mo-overlay").forEach(o=>o.remove()); }
 const CHANGELOG=[
+ {v:"2026.10.13",date:"2026-10-05",notes:["Position tracking: tapping a point on the profile now lights that point green and highlights its grade column(s) below; tapping a grade column header lights the matching point(s) on the profile. Both stay lit after closing the pop-up and after switching runs, so you can see where you are in the profile at a glance."]},
  {v:"2026.10.11",date:"2026-10-05",notes:["FSTD list: added the Atlas Air Training Center Miami simulators — SIM 1 (FAA 722, Level C) and SIM 2 (FAA 1092, Level D) — from AQP Application Table B.1.6."]},
  {v:"2026.10.8",date:"2026-10-05",notes:["Chart file names updated to match the uploaded SMGCS and ILS 7L charts, so all four chart buttons now open."]},
  {v:"2026.10.7",date:"2026-10-04",notes:["New app: CQMT2.1 SPOT (lesson guide Rev 2026.03.05) — 10 circuits, 17 graded tasks, with the same engine as the MV and MT tools (comments on any grade, AIMS Module Attempt Status, FSTD selector, Sim discrepancies, Seat Support notes, PDF).","Pairing rules built in: Circuit 1 taxi-out graded on the first half (Run 1) only; Circuit 9 taxi-in on the second half (Run 2) only; Circuit 6 CAT II is a crew task (the CA graded as PF, the FO graded as PM — matches the pairing table for CA/FO, CA/CA, FO/FO and Seat Support); Circuit 10 First Look (2.6, 7.6) only when a Captain is PF. Cells that don't apply are N/A automatically.","Lesson-guide pop-ups reproduce the CQMT2.1 guide (SA, IOS setup, verbatim ATC, IP notes). Below-standard checklists and Performance Statement references use the AQP 747 Pilot Qualification Standards (6.2.1, 6.2.4, 7.3.1 and 7.3.2 use their TPO standards), plus the guide’s common errors. Automation is N/A for 1.4.2, 8.1.3 and 7.6 per the qualification standards.","Charts: ILS 25L is built in. LADYJ 4 RNAV departure, LAX SMGCS and ILS 7L load from the MT2 charts folder (Wi-Fi needed the first time); until they are uploaded the button says to use the pEFB."]},
@@ -3136,7 +3167,7 @@ function render(){
   const stage=document.getElementById("stage");
   stage.innerHTML="";
   if(EX==="AIMS"){ stage.appendChild(buildAIMS()); }
-  else{ stage.appendChild(buildSheet(EX)); }
+  else{ stage.appendChild(buildSheet(EX)); try{ reapplyMarks(); }catch(e){} }
   try{ updateNotifyBtn(); }catch(e){}
 }
 document.querySelectorAll(".rtab").forEach(t=>t.addEventListener("click",()=>{
