@@ -485,9 +485,9 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var n,r,i,a,
 
 <script>
 "use strict";
-const VERSION="2026.10.9", VERSION_DATE="2026-10-05";
+const VERSION="2026.10.10", VERSION_DATE="2026-10-05";
 const CHANGELOG=[
- {v:"2026.10.9",date:"2026-10-05",notes:["Takeoff and landing credit goes to the PF only.","New app: CQLC Pilot Line Check (grade sheet 2026-08-26). Briefing checklist with read-aloud scripts, flight and crew (2–4 crewmembers, one AIMS form each), phase grading with conditions, PF/PM per task that follows the flight, results with the AQPM 4.3.9 rules, AIMS entry view per crewmember, and PDF."]}
+ {v:"2026.10.10",date:"2026-10-05",notes:["ACM 1 / ACM 2 are not graded — documents (certificate & publications) check only, seat Jumpseat / rest. They no longer appear on the Grade, Results or AIMS tabs; their audit prints on the briefing page of the PDF.","Takeoff and landing credit goes to the PF only.","New app: CQLC Pilot Line Check (grade sheet 2026-08-26). Briefing checklist with read-aloud scripts, flight and crew (2–4 crewmembers, one AIMS form each), phase grading with conditions, PF/PM per task that follows the flight, results with the AQPM 4.3.9 rules, AIMS entry view per crewmember, and PDF."]}
 ];
 const HSAC=["H","SOP","A","CRM"], SC=["SOP","CRM"];
 const DIMN={H:"Handling",SOP:"SOP",A:"Automation",CRM:"CRM"};
@@ -539,8 +539,8 @@ function blank(){ return {app:"CQLC", brief:{}, lcType:"", seat:"", instructor:{
   flight:{date:new Date().toISOString().slice(0,10),acn:"",flt:"",dep:"",arr:"",block:"",ftime:"",geo:""},
   crew:{pic:{on:true,name:"",emp:"",duty:"CA",seat:"Left",st:"No",attempt:"Initial Attempt",certs:{}},
         sic:{on:true,name:"",emp:"",duty:"FO",seat:"Right",st:"No",attempt:"Initial Attempt",certs:{}},
-        acm1:{on:false,name:"",emp:"",duty:"FO",seat:"",st:"No",attempt:"Initial Attempt",certs:{}},
-        acm2:{on:false,name:"",emp:"",duty:"FO",seat:"",st:"No",attempt:"Initial Attempt",certs:{}}},
+        acm1:{on:false,name:"",emp:"",duty:"FO",seat:"Jumpseat / rest",st:"No",attempt:"",certs:{}},
+        acm2:{on:false,name:"",emp:"",duty:"FO",seat:"Jumpseat / rest",st:"No",attempt:"",certs:{}}},
   pfStart:"pic", duty:{}, cond:{}, opt:{}, grades:{}, comments:{}, common:[], cnt:{}, results:{} }; }
 let S=blank(); let TAB="brief"; const AUTOSAVE_KEY="CQLC_AUTOSAVE_v1", SESSIONS_KEY="CQLC_SESSIONS_v1";
 
@@ -548,11 +548,13 @@ function esc(t){ return String(t==null?"":t).replace(/[&<>"]/g,c=>({"&":"&amp;",
 function toast(m){ const d=document.createElement("div"); d.className="toast"; d.textContent=m; document.body.appendChild(d); setTimeout(()=>d.remove(),1800); }
 function save(){ try{ localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(S)); }catch(e){} }
 function activeMembers(){ return MEMBERS.filter(m=>S.crew[m.k].on); }
+/* ACM 1 / ACM 2 are not graded — certificate & publications audit only */
+function gradedMembers(){ return activeMembers().filter(m=>m.k==="pic"||m.k==="sic"); }
 function mlabel(mk){ const m=MEMBERS.find(x=>x.k===mk); const c=S.crew[mk]; return (c.name||m.label)+" ("+c.duty+")"; }
 function allTasks(){ const out=[]; TASKS.forEach(t=>{ if(t.opt && !S.opt[t.k]) return; out.push(t); });
   S.common.forEach(c=>out.push({k:"c:"+c.id,ph:"9.0 COMMON TASKS / OTHER ADDITIONAL TASKS",nm:c.code?(c.code+" "+c.nm):("Other: "+c.nm),pf:HSAC,common:c})); return out; }
 function defaultDuty(t, mk){
-  if(mk==="acm1"||mk==="acm2") return "OFF";
+  if(mk==="acm1"||mk==="acm2") return "OFF";  // never graded
   const other = mk==="pic"?"sic":"pic";
   return S.pfStart===mk ? "PF" : (S.pfStart===other ? "PM" : "PM");
 }
@@ -565,13 +567,13 @@ function isLow(v){ return v==="2"||v==="2-RF"||v==="1"; }
 function memberGrades(mk){ const out=[]; allTasks().forEach(t=>{ dimsFor(t,mk).forEach(d=>{ const v=gradeOf(t,mk,d); if(dutyOf(t,mk)!=="OFF") out.push({t,dim:d,v}); }); }); return out; }
 function setDuty(t, mk, val){
   (S.duty[t.k]=S.duty[t.k]||{})[mk]=val;
-  if(val==="PF"){ activeMembers().forEach(m=>{ if(m.k!==mk && dutyOf(t,m.k)==="PF") S.duty[t.k][m.k]="PM"; }); }
+  if(val==="PF"){ gradedMembers().forEach(m=>{ if(m.k!==mk && dutyOf(t,m.k)==="PF") S.duty[t.k][m.k]="PM"; }); }
   S._lastDuty=t.k; save();
 }
 function cascadeFrom(tk){
   const list=allTasks(); const i=list.findIndex(x=>x.k===tk); if(i<0) return;
-  const src={}; activeMembers().forEach(m=>src[m.k]=dutyOf(list[i],m.k));
-  for(let j=i+1;j<list.length;j++){ (S.duty[list[j].k]=S.duty[list[j].k]||{}); activeMembers().forEach(m=>S.duty[list[j].k][m.k]=src[m.k]); }
+  const src={}; gradedMembers().forEach(m=>src[m.k]=dutyOf(list[i],m.k));
+  for(let j=i+1;j<list.length;j++){ (S.duty[list[j].k]=S.duty[list[j].k]||{}); gradedMembers().forEach(m=>S.duty[list[j].k][m.k]=src[m.k]); }
   S._lastDuty=null; save(); render(); toast("Crew duties applied to the rest of the flight");
 }
 function counts(mk){
@@ -583,7 +585,7 @@ function suggest(mk){
   const r=S.results[mk]||{}; const g=memberGrades(mk); const c=counts(mk);
   const has1=g.some(x=>x.v==="1"), has2=g.some(x=>x.v==="2"||x.v==="2-RF"); const threes=[...new Set(g.filter(x=>x.v==="3").map(x=>x.t.nm))];
   const evaluated = mk==="pic"||mk==="sic";
-  const crewTo = activeMembers().reduce((a,m)=>a+counts(m.k).to,0), crewLdg = activeMembers().reduce((a,m)=>a+counts(m.k).ldg,0);
+  const crewTo = gradedMembers().reduce((a,m)=>a+counts(m.k).to,0), crewLdg = gradedMembers().reduce((a,m)=>a+counts(m.k).ldg,0);
   const incomplete = evaluated && (crewTo<1 || crewLdg<1);
   let s, why=[];
   if(has1){ s="Unsatisfactory"; why.push("A grade of 1 requires training and results in an unsatisfactory LC (AQPM 4.3.14)."); }
@@ -599,7 +601,7 @@ const TABS=[["brief","1 · Briefing"],["crew","2 · Flight & crew"],["grade","3 
 function render(){
   const tb=document.getElementById("tabs"); tb.innerHTML="";
   TABS.forEach(([k,l])=>{ const b=document.createElement("div"); b.className="tab"+(TAB===k?" on":""); b.textContent=l;
-    if(k==="results"){ const n=activeMembers().reduce((a,m)=>a+needComments(m.k).length,0); if(n) b.innerHTML+=`<span class="bad">${n}</span>`; }
+    if(k==="results"){ const n=gradedMembers().reduce((a,m)=>a+needComments(m.k).length,0); if(n) b.innerHTML+=`<span class="bad">${n}</span>`; }
     b.onclick=()=>{TAB=k; render(); window.scrollTo(0,0);}; tb.appendChild(b); });
   const v=document.getElementById("view"); v.innerHTML="";
   ({brief:vBrief,crew:vCrew,grade:vGrade,results:vResults,aims:vAims})[TAB](v);
@@ -644,8 +646,8 @@ function vCrew(v){
      <div class="row ${c.on?"":"hide"}" data-body>
       <label class="f">Name (Last, First, M.I.)<input type="text" size="24" data-c="name"></label><label class="f">Crewmember ID<input type="text" size="8" data-c="emp"></label>
       <label class="f">Duty Position<select data-c="duty">${m.k==="pic"?"<option>CA</option>":"<option>CA</option><option>FO</option>"}</select></label>
-      <label class="f">Seat Position<select data-c="seat"><option value="">—</option><option>Left</option><option>Right</option><option>Jumpseat / rest</option></select></label>
-      <label class="f">Attempt<select data-c="attempt">${ATTEMPTS.map(a=>`<option>${a}</option>`).join("")}</select></label>
+      <label class="f">Seat Position<select data-c="seat">${m.k.startsWith("acm")?`<option>Jumpseat / rest</option>`:`<option value="">—</option><option>Left</option><option>Right</option>`}</select></label>
+      ${m.k.startsWith("acm")?`<span class="sub" style="margin:0 0 0 4px;align-self:flex-end">Not graded — documents check only</span>`:`<label class="f">Attempt<select data-c="attempt">${ATTEMPTS.map(a=>`<option>${a}</option>`).join("")}</select></label>`}
       <label class="f">Special Tracking<select data-c="st"><option>No</option><option>Yes</option></select></label></div>
      <div class="${c.on?"":"hide"}" data-body2><div class="sub" style="margin:8px 0 2px;font-weight:700">Certificate and publications audit</div><div class="row" data-certs></div></div></div>`);
     card.querySelectorAll("[data-c]").forEach(i=>{ i.value=c[i.dataset.c]||(i.tagName==="SELECT"?i.options[0].value:""); i.oninput=i.onchange=()=>{ c[i.dataset.c]=i.value; save(); if(i.dataset.c==="st"||i.dataset.c==="duty") render(); }; });
@@ -672,7 +674,7 @@ function vGrade(v){
     v.appendChild(taskCard(t));
   });
   const tl=el(`<div class="card"><h3>Takeoffs and landings</h3><div class="sub">Takeoff and landing credit goes to the PF only — counted automatically from who was PF on 2.0 Takeoff and 7.0 Landing. Change if needed.</div><div class="row" data-c></div></div>`);
-  activeMembers().forEach(m=>{ const c=counts(m.k); const b=el(`<div class="row" style="margin-right:18px"><b>${esc(mlabel(m.k))}</b><label class="f">Takeoffs<input type="number" min="0" style="width:64px" data-x="to"></label><label class="f">Landings<input type="number" min="0" style="width:64px" data-x="ldg"></label></div>`);
+  gradedMembers().forEach(m=>{ const c=counts(m.k); const b=el(`<div class="row" style="margin-right:18px"><b>${esc(mlabel(m.k))}</b><label class="f">Takeoffs<input type="number" min="0" style="width:64px" data-x="to"></label><label class="f">Landings<input type="number" min="0" style="width:64px" data-x="ldg"></label></div>`);
     b.querySelectorAll("input").forEach(i=>{ const k=i.dataset.x; i.value=c[k]; i.oninput=()=>{ (S.cnt[m.k]=S.cnt[m.k]||{})[k]=i.value; save(); }; }); tl.querySelector("[data-c]").appendChild(b); });
   v.appendChild(tl);
 }
@@ -694,10 +696,10 @@ function taskCard(t){
     t.conds.forEach(([code,nm])=>{ const b=el(`<span class="cond ${cd[code]?"on":""}">${code} ${esc(nm)}</span>`); b.onclick=()=>{ const c=(S.cond[t.k]=S.cond[t.k]||{}); if(t.one && !c[code]) t.conds.forEach(x=>c[x[0]]=false); c[code]=!c[code]; save(); render(); }; row.appendChild(b); });
     cw.appendChild(row); }
   const mw=card.querySelector("[data-m]");
-  activeMembers().forEach(m=>{
+  gradedMembers().forEach(m=>{
     const d=dutyOf(t,m.k);
     const box=el(`<div class="mem ${d==="OFF"?"off":""}"><div class="mhead"><span class="mname">${esc(mlabel(m.k))}</span><span class="duty" data-d></span></div><div data-g></div><div class="cmt" data-c></div></div>`);
-    const dd=box.querySelector("[data-d]"); const opts=(m.k.startsWith("acm")||t.relief)?["PF","PM","OFF"]:["PF","PM","OFF"];
+    const dd=box.querySelector("[data-d]"); const opts=["PF","PM","OFF"];
     opts.forEach(o=>{ const s=el(`<span class="${o} ${d===o?"on":""}">${o==="OFF"?(t.relief?"Relief / off":"Off"):o}</span>`); s.onclick=()=>{ setDuty(t,m.k,o); render(); }; dd.appendChild(s); });
     const g=box.querySelector("[data-g]");
     if(d==="OFF") g.innerHTML=`<div class="sub">Not graded on this task (not in a flight deck duty position).</div>`;
@@ -721,7 +723,7 @@ function taskCard(t){
 }
 
 function vResults(v){
-  activeMembers().forEach(m=>{
+  gradedMembers().forEach(m=>{
     const sg=suggest(m.k); const r=(S.results[m.k]=S.results[m.k]||{}); const nc=needComments(m.k); const ov=overall(m.k);
     const card=el(`<div class="card"><h2>Results of Line Check — ${esc(m.label)}: ${esc(S.crew[m.k].name||"")}</h2>
       <div class="sub">Duty ${esc(S.crew[m.k].duty)} · Takeoffs ${sg.counts.to} · Landings ${sg.counts.ldg} · ${esc(S.crew[m.k].attempt)}</div>
@@ -754,7 +756,7 @@ function vResults(v){
 function condText(t){ if(!t.conds) return ""; const c=S.cond[t.k]||{}; return t.conds.map(([code,nm])=>`${code} ${nm}: ${c[code]?"Yes":"No"}`).join(" · "); }
 function vAims(v){
   v.appendChild(el(`<div class="infobox">One AIMS form per crewmember. Enter each task top to bottom: duty position, conditions (Yes/No), then the grades.</div>`));
-  activeMembers().forEach(m=>{
+  gradedMembers().forEach(m=>{
     const rows=allTasks().map(t=>{ const d=dutyOf(t,m.k); const dims=["H","SOP","A","CRM"].map(x=>dimsFor(t,m.k).includes(x)?gradeOf(t,m.k,x):"—");
       return `<tr><td>${esc(t.nm)}</td><td><span class="pill ${d}">${d==="PF"?"Pilot Flying":d==="PM"?"Pilot Monitoring":"Not graded"}</span></td><td style="font-size:12.5px">${esc(condText(t))}</td>${dims.map(x=>`<td>${x}</td>`).join("")}</tr>`; }).join("");
     v.appendChild(el(`<div class="card aims"><h2>${esc(mlabel(m.k))} · Emp ${esc(S.crew[m.k].emp||"—")} · ${esc(S.crew[m.k].attempt)}</h2>
@@ -770,7 +772,7 @@ function makePdf(){
     doc.setFont(undefined,"bold"); doc.setFontSize(14); doc.setTextColor(30,58,95); doc.text(title,M,40); doc.setTextColor(0); doc.setFont(undefined,"normal"); doc.setFontSize(9);
     const f=S.flight; doc.text(`Curriculum: CQ – Pilot · Module/Lesson: LC · Fleet: 747 · Date ${f.date||"—"} · A/C ${f.acn||"—"} · Flt ${f.flt||"—"} · ${f.dep||"—"}–${f.arr||"—"} · Block ${f.block||"—"} · Flight time ${f.ftime||"—"} · Geo ${f.geo||"—"}`,M,56,{maxWidth:W-2*M});
     doc.text(`Check Pilot: ${S.instructor.name||"—"} (Emp ${S.instructor.emp||"—"}) · Version ${VERSION}`,M,68); };
-  activeMembers().forEach((m,idx)=>{
+  gradedMembers().forEach((m,idx)=>{
     if(idx) doc.addPage();
     const c=S.crew[m.k]; hdr("PILOT LINE CHECK – AQP GRADE SHEET · "+m.label.toUpperCase());
     doc.setFontSize(10); doc.setFont(undefined,"bold"); doc.text(`${c.name||"—"} · ID ${c.emp||"—"} · Duty ${c.duty} · Seat ${c.seat||"—"} · ${c.attempt} · Special Tracking ${c.st}`,M,86); doc.setFont(undefined,"normal");
@@ -793,6 +795,10 @@ function makePdf(){
   doc.addPage(); hdr("PILOT LINE CHECK – BRIEFING (ALL LINE CHECKS)");
   const bb=[]; BRIEF.forEach(sec=>{ bb.push([{content:sec.sec,colSpan:2,styles:{fillColor:[30,58,95],textColor:255,fontStyle:"bold"}}]); sec.items.forEach(([k,it])=>bb.push([(S.brief[k]?"[x] ":"[ ] ")+it, k==="desig"?(S.lcType||"—"):k==="seat"?(S.seat||"—"):""])); });
   doc.autoTable({startY:84,body:bb,styles:{fontSize:8.5,cellPadding:3},columnStyles:{0:{cellWidth:300}},margin:{left:M,right:M}});
+  const acms=activeMembers().filter(m=>m.k.startsWith("acm"));
+  if(acms.length){ doc.autoTable({startY:doc.lastAutoTable.finalY+14,head:[["Augmented crew (not graded)","ID","Duty","Seat","Certificate & publications audit"]],
+    body:acms.map(m=>{ const c=S.crew[m.k]; return [m.label+": "+(c.name||"—"),c.emp||"—",c.duty,"Jumpseat / rest",CERTS.map(x=>(c.certs[x]?"[x] ":"[ ] ")+x).join("  ")]; }),
+    styles:{fontSize:8,cellPadding:3},headStyles:{fillColor:[30,58,95]},margin:{left:M,right:M}}); }
   return doc;
 }
 function pdfName(){ const f=S.flight; return ("CQLC_"+(f.date||"")+"_"+(f.flt||"")+"_"+(S.crew.pic.name||"PIC")).replace(/[^A-Za-z0-9_.-]+/g,"_")+".pdf"; }
