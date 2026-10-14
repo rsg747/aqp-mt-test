@@ -497,8 +497,9 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var n,r,i,a,
 
 <script>
 "use strict";
-const VERSION="2026.10.12", VERSION_DATE="2026-10-05";
+const VERSION="2026.10.13", VERSION_DATE="2026-10-14";
 const CHANGELOG=[
+ {v:"2026.10.13",date:"2026-10-14",notes:["Saved sessions can now be deleted (Delete on each session, plus Delete all). PDF header re-laid out so the title, logo and flight details no longer overlap."]},
  {v:"2026.10.12",date:"2026-10-05",notes:["Grade 2 debrief remediation (AQPM 4.3.9): ticking it pre-fills the Phase/TPO with the task(s) graded 2; the overall grade becomes Satisfactory (no email required) once the Phase/TPO and justification are documented. It shows on the Results and AIMS tabs and prints on the PDF.","Email notification button: when a crewmember is Unsatisfactory or Incomplete it turns red (⚠ Email required) and builds a ready-to-copy email (subject + body) for Training Records, the 747 Fleet Captain and Training Scheduling, with the items graded 2 or 1, comments, and the AQPM 4.3.9 / 4.3.14 or 4.3.4 action.","ACM 1 / ACM 2 are not graded — documents (certificate & publications) check only, seat Jumpseat / rest. They no longer appear on the Grade, Results or AIMS tabs; their audit prints on the briefing page of the PDF.","Takeoff and landing credit goes to the PF only.","New app: CQLC Pilot Line Check (grade sheet 2026-08-26). Briefing checklist with read-aloud scripts, flight and crew (2–4 crewmembers, one AIMS form each), phase grading with conditions, PF/PM per task that follows the flight, results with the AQPM 4.3.9 rules, AIMS entry view per crewmember, and PDF."]}
 ];
 const HSAC=["H","SOP","A","CRM"], SC=["SOP","CRM"];
@@ -786,18 +787,22 @@ function vAims(v){
 /* ---------- PDF ---------- */
 function makePdf(){
   const { jsPDF } = window.jspdf; const doc=new jsPDF({orientation:"portrait",unit:"pt",format:"letter"}); const M=36; const W=doc.internal.pageSize.getWidth();
-  const hdr=(title)=>{ try{ if(window.LOGO&&window.LOGO.png){ const lw=110,lh=lw*132.6/775.8; doc.addImage(window.LOGO.png,"PNG",W-M-lw,22,lw,lh);} }catch(e){}
-    doc.setFont(undefined,"bold"); doc.setFontSize(14); doc.setTextColor(30,58,95); doc.text(title,M,40); doc.setTextColor(0); doc.setFont(undefined,"normal"); doc.setFontSize(9);
-    const f=S.flight; doc.text(`Curriculum: CQ – Pilot · Module/Lesson: LC · Fleet: 747 · Date ${f.date||"—"} · A/C ${f.acn||"—"} · Flt ${f.flt||"—"} · ${f.dep||"—"}–${f.arr||"—"} · Block ${f.block||"—"} · Flight time ${f.ftime||"—"} · Geo ${f.geo||"—"}`,M,56,{maxWidth:W-2*M});
-    doc.text(`Check Pilot: ${S.instructor.name||"—"} (Emp ${S.instructor.emp||"—"}) · Version ${VERSION}`,M,68); };
+  const hdr=(title)=>{ const lw=88,lh=lw*132.6/775.8; try{ if(window.LOGO&&window.LOGO.png){ doc.addImage(window.LOGO.png,"PNG",W-M-lw,18,lw,lh);} }catch(e){}
+    doc.setFont(undefined,"bold"); doc.setFontSize(13); doc.setTextColor(30,58,95);
+    const tl=doc.splitTextToSize(title,W-2*M); doc.text(tl,M,48); let y=48+(tl.length-1)*15;
+    doc.setTextColor(0); doc.setFont(undefined,"normal"); doc.setFontSize(8.5); const f=S.flight;
+    const l1=`Curriculum: CQ – Pilot · Module/Lesson: LC · Fleet: 747 · Date ${f.date||"—"} · A/C ${f.acn||"—"} · Flt ${f.flt||"—"} · ${f.dep||"—"}–${f.arr||"—"}`;
+    const l2=`Block ${f.block||"—"} · Flight time ${f.ftime||"—"} · Geo ${f.geo||"—"} · Check Pilot: ${S.instructor.name||"—"} (Emp ${S.instructor.emp||"—"}) · Version ${VERSION}`;
+    [l1,l2].forEach(l=>{ doc.splitTextToSize(l,W-2*M).forEach(x=>{ y+=12; doc.text(x,M,y); }); });
+    doc.setDrawColor(242,193,78); doc.setLineWidth(1); doc.line(M,y+6,W-M,y+6); return y+10; };
   gradedMembers().forEach((m,idx)=>{
     if(idx) doc.addPage();
-    const c=S.crew[m.k]; hdr("PILOT LINE CHECK – AQP GRADE SHEET · "+m.label.toUpperCase());
-    doc.setFontSize(10); doc.setFont(undefined,"bold"); doc.text(`${c.name||"—"} · ID ${c.emp||"—"} · Duty ${c.duty} · Seat ${c.seat||"—"} · ${c.attempt} · Special Tracking ${c.st}`,M,86); doc.setFont(undefined,"normal");
-    doc.setFontSize(8.5); doc.text("Certificate & publications audit: "+CERTS.map(x=>(c.certs[x]?"☑ ":"☐ ")+x).join("   ").replace(/☑/g,"[x]").replace(/☐/g,"[ ]"),M,98,{maxWidth:W-2*M});
+    const c=S.crew[m.k]; let hy=hdr("PILOT LINE CHECK – AQP GRADE SHEET · "+m.label.toUpperCase());
+    doc.setFontSize(10); doc.setFont(undefined,"bold"); doc.text(`${c.name||"—"} · ID ${c.emp||"—"} · Duty ${c.duty} · Seat ${c.seat||"—"} · ${c.attempt} · Special Tracking ${c.st}`,M,hy+12); doc.setFont(undefined,"normal");
+    doc.setFontSize(8.5); doc.text("Certificate & publications audit: "+CERTS.map(x=>(c.certs[x]?"☑ ":"☐ ")+x).join("   ").replace(/☑/g,"[x]").replace(/☐/g,"[ ]"),M,hy+25,{maxWidth:W-2*M});
     const body=allTasks().map(t=>{ const d=dutyOf(t,m.k); const dims=["H","SOP","A","CRM"].map(x=>dimsFor(t,m.k).includes(x)?gradeOf(t,m.k,x):"—");
       return [t.nm+(t.conds?"\n"+(t.conds.filter(([k])=>(S.cond[t.k]||{})[k]).map(([k,n])=>k+" "+n).join(", ")||"(no condition selected)"):""), d==="OFF"?"—":d, ...dims, ((S.comments[t.k]||{})[m.k]||"")]; });
-    doc.autoTable({startY:112,head:[["Task / condition","Duty","H","SOP","A","CRM","Comments"]],body,styles:{fontSize:8,cellPadding:3,valign:"top"},headStyles:{fillColor:[30,58,95]},
+    doc.autoTable({startY:hy+50,head:[["Task / condition","Duty","H","SOP","A","CRM","Comments"]],body,styles:{fontSize:8,cellPadding:3,valign:"top"},headStyles:{fillColor:[30,58,95]},
       columnStyles:{0:{cellWidth:170},1:{cellWidth:34},2:{cellWidth:28,halign:"center"},3:{cellWidth:28,halign:"center"},4:{cellWidth:28,halign:"center"},5:{cellWidth:28,halign:"center"}},
       didParseCell:(h)=>{ if(h.section==="body" && h.column.index>=2 && h.column.index<=5){ const v=String(h.cell.raw); if(v==="1"||v==="2"||v==="2-RF") h.cell.styles.fillColor=[247,201,204]; else if(v==="3") h.cell.styles.fillColor=[255,245,154]; } }, margin:{left:M,right:M}});
     let y=doc.lastAutoTable.finalY+14; const sg=suggest(m.k); const r=S.results[m.k]||{}; const cn=counts(m.k);
@@ -810,9 +815,9 @@ function makePdf(){
     doc.text("Check Pilot (Print): ______________________________   Date: ____________",M,y); y+=18;
     doc.text("Check Pilot (Signature): __________________________   Employee #: ________     FAA Inspector / Examiner: ______________  FSDO / Date: ________",M,y,{maxWidth:W-2*M});
   });
-  doc.addPage(); hdr("PILOT LINE CHECK – BRIEFING (ALL LINE CHECKS)");
+  doc.addPage(); const bhy=hdr("PILOT LINE CHECK – BRIEFING (ALL LINE CHECKS)");
   const bb=[]; BRIEF.forEach(sec=>{ bb.push([{content:sec.sec,colSpan:2,styles:{fillColor:[30,58,95],textColor:255,fontStyle:"bold"}}]); sec.items.forEach(([k,it])=>bb.push([(S.brief[k]?"[x] ":"[ ] ")+it, k==="desig"?(S.lcType||"—"):k==="seat"?(S.seat||"—"):""])); });
-  doc.autoTable({startY:84,body:bb,styles:{fontSize:8.5,cellPadding:3},columnStyles:{0:{cellWidth:300}},margin:{left:M,right:M}});
+  doc.autoTable({startY:bhy+8,body:bb,styles:{fontSize:8.5,cellPadding:3},columnStyles:{0:{cellWidth:300}},margin:{left:M,right:M}});
   const acms=activeMembers().filter(m=>m.k.startsWith("acm"));
   if(acms.length){ doc.autoTable({startY:doc.lastAutoTable.finalY+14,head:[["Augmented crew (not graded)","ID","Duty","Seat","Certificate & publications audit"]],
     body:acms.map(m=>{ const c=S.crew[m.k]; return [m.label+": "+(c.name||"—"),c.emp||"—",c.duty,"Jumpseat / rest",CERTS.map(x=>(c.certs[x]?"[x] ":"[ ] ")+x).join("  ")]; }),
@@ -867,6 +872,18 @@ function openEmailDrafts(){
   modal("Email — copy & send", w);
 }
 function updateNotifyBtn(){ const b=document.getElementById("notifyBtn"); if(!b) return; let n=0; try{ n=buildEmailDrafts().length; }catch(e){} b.classList.toggle("req",n>0); b.textContent=n>0?("⚠ Email required ("+n+")"):"Email notification"; }
+function openSaved(){
+  const old=document.querySelector(".modalbg"); if(old) old.remove();
+  const all=JSON.parse(localStorage.getItem(SESSIONS_KEY)||"[]"); const d=document.createElement("div");
+  if(!all.length) d.innerHTML="<div class='sub'>No saved sessions yet.</div>";
+  const put=a=>{ try{ localStorage.setItem(SESSIONS_KEY,JSON.stringify(a)); }catch(e){} };
+  all.forEach((s,i)=>{ const r=el(`<div class="chk" style="align-items:center"><div style="flex:1"><b>${esc(s.label)}</b><div class="sub">${esc(new Date(s.at).toLocaleString())}</div></div><button class="btn" data-o>Open</button><button class="btn" data-x style="color:#b3261e;border-color:#e6a49c">Delete</button></div>`);
+    r.querySelector("[data-o]").onclick=()=>{ S=Object.assign(blank(),JSON.parse(JSON.stringify(s.data))); save(); document.querySelector(".modalbg").remove(); render(); };
+    r.querySelector("[data-x]").onclick=()=>{ if(!confirm("Delete this saved session?\n\n"+s.label+"\n"+new Date(s.at).toLocaleString()+"\n\nThis cannot be undone.")) return; const a=JSON.parse(localStorage.getItem(SESSIONS_KEY)||"[]"); a.splice(i,1); put(a); openSaved(); toast("Saved session deleted"); };
+    d.appendChild(r); });
+  if(all.length>1){ const b=el(`<div style="text-align:right;margin-top:8px"><button class="btn" style="color:#b3261e;border-color:#e6a49c">Delete all saved sessions</button></div>`); b.querySelector("button").onclick=()=>{ if(!confirm("Delete all "+all.length+" saved sessions on this iPad? This cannot be undone.")) return; put([]); openSaved(); toast("All saved sessions deleted"); }; d.appendChild(b); }
+  modal("Saved sessions", d);
+}
 /* ---------- toolbar ---------- */
 function modal(title, inner, buttons){
   const bg=el(`<div class="modalbg"><div class="modal"><h2 style="margin:0 0 8px;color:#1e3a5f">${esc(title)}</h2><div data-b></div><div style="text-align:right;margin-top:12px" data-f></div></div></div>`);
@@ -877,10 +894,7 @@ function modal(title, inner, buttons){
 document.querySelectorAll("[data-tb]").forEach(b=>b.onclick=()=>{
   const a=b.dataset.tb;
   if(a==="save"){ const all=JSON.parse(localStorage.getItem(SESSIONS_KEY)||"[]"); all.unshift({at:new Date().toISOString(),label:(S.flight.flt||"LC")+" "+(S.flight.dep||"")+"-"+(S.flight.arr||"")+" "+(S.crew.pic.name||""),data:S}); localStorage.setItem(SESSIONS_KEY,JSON.stringify(all.slice(0,30))); toast("Saved"); }
-  if(a==="saved"){ const all=JSON.parse(localStorage.getItem(SESSIONS_KEY)||"[]"); const d=document.createElement("div");
-    if(!all.length) d.innerHTML="<div class='sub'>No saved sessions yet.</div>";
-    all.forEach((s,i)=>{ const r=el(`<div class="chk"><div style="flex:1"><b>${esc(s.label)}</b><div class="sub">${esc(new Date(s.at).toLocaleString())}</div></div><button class="btn">Open</button></div>`); r.querySelector("button").onclick=()=>{ S=Object.assign(blank(),JSON.parse(JSON.stringify(s.data))); save(); document.querySelector(".modalbg").remove(); render(); }; d.appendChild(r); });
-    modal("Saved sessions", d); }
+  if(a==="saved"){ openSaved(); }
   if(a==="new"){ modal("Start a new line check?","<div>This clears the current grades and crew (the check pilot is kept). Save first if you need this session.</div>",[{l:"Cancel"},{l:"New line check",p:true,f:()=>{ const ins=S.instructor; S=blank(); S.instructor=ins; save(); TAB="brief"; render(); }}]); }
   if(a==="notify"){ openEmailDrafts(); }
   if(a==="pdf"){ try{ makePdf().save(pdfName()); }catch(e){ alert("PDF error: "+e.message); } }
