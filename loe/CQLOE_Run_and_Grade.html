@@ -549,6 +549,7 @@
   .pf-opt.on{background:var(--r1);border-color:var(--r1-deep);color:#fff}
   .pf-opt .pf-d{font-weight:700;font-size:11px;opacity:.8;margin-left:3px}
   .pf-note{flex:1 1 320px;color:#46505e;line-height:1.35}
+  .pairwarn{background:#fdecea;border:1.5px solid #e6a49c;color:#7a2318;border-radius:8px;padding:8px 10px;margin:0 0 8px;font-size:12.5px;line-height:1.4}
   .brief.ses{background:#fff6e0;border-color:#f0cf7a}
   /* ---- profile ---- */
   .prof-pills{display:flex;gap:6px;align-items:center;flex-wrap:wrap;padding:8px 10px 0}
@@ -1262,7 +1263,7 @@ const SCEN = {
    ===================================================================== */
 const GRADES = ["5","4","3","2","2-RP","2-RF","1","1-RP","1-RF","N/A"];
 const BELOW = new Set(["3","2","2-RP","2-RF","1","1-RP","1-RF"]);
-const VERSION = "2026.10.24";
+const VERSION = "2026.10.24.2";
 const VERSION_DATE = "2026-10-24";
 const DIMS = [["H","Handling"],["SOP","SOP"],["A","Automation"],["CRM","CRM"]];
 const DIMNM = {H:"Handling",SOP:"SOP",A:"Automation",CRM:"CRM"};
@@ -1462,6 +1463,7 @@ function buildSheet(){
       <span class="pf-note">Every phase starts with this pilot as PF. Ground and After Landing: the left-seat Captain taxis as PF. Tap a <b>Duty</b> cell in the grid to change who was PF for that phase.</span>
       <span class="qbtn" data-help="duty">?</span>
     </div>
+    ${samePairing()?`<div class="pairwarn">⚠ <b>${esc(duty.cm1)}/${esc(duty.cm2)} pairing is not used on the LOE.</b> The LOE is flown by a CA/FO crew; a Seat Support pilot (SSI) may fill either seat. Check the Duty boxes above. <span class="qbtn" data-help="duty">?</span></div>`:""}
     <div class="brief"><b>Flight —</b> ${esc(sc.callsign)} · ${esc(sc.od)} · ${esc(sc.plan)}</div>
     <div class="brief"><b>Setup —</b> ${esc(sc.wx)} &nbsp;·&nbsp; Planned: each crew performs the LOE as PF or PM within 4.0 hrs</div>
     <div class="brief ses"><b>Event sets —</b> ${sesTxt}</div>
@@ -1479,7 +1481,7 @@ function buildSheet(){
   // crew inputs
   wrap.querySelectorAll("select.dutysel[data-person]").forEach(sel=>{
     sel.dataset.rendered=sel.value;
-    const commit=()=>{ if(duty[sel.dataset.person]!==sel.value){ duty[sel.dataset.person]=sel.value; render(); } };
+    const commit=()=>{ if(duty[sel.dataset.person]!==sel.value){ duty[sel.dataset.person]=sel.value; render(); if(samePairing()) pairingNotice(); } };
     sel.addEventListener("change",commit); sel.addEventListener("input",commit); sel.addEventListener("blur",commit);
   });
   wrap.querySelectorAll("[data-swap]").forEach(b=>b.addEventListener("click",swapCrew));
@@ -1500,6 +1502,12 @@ function buildSheet(){
   { const sl=wrap.querySelector("[data-seatline]"); if(sl) sl.innerHTML=seatSummaryHTML(); }
   refreshPanels(wrap);
   return wrap;
+}
+function samePairing(){ return !isSS("cm1") && !isSS("cm2") && duty.cm1===duty.cm2; }
+function pairingNotice(){
+  const w=document.createElement("div"); w.className="mo-msg";
+  w.innerHTML="<b>"+esc(duty.cm1)+"/"+esc(duty.cm2)+" pairing is not used on the LOE.</b><br><br>Per the AQP Manual (AQPM / I/E AQP Manual), the LOE is flown by a CA/FO crew — there is no CA/CA or FO/FO pairing. A Seat Support pilot (SSI) may fill either seat for an unpaired crewmember: set the other pilot's Duty to <b>Seat Support</b>.<br><br>The app will still let you grade, but check the Duty boxes.";
+  showModal("LOE pairing", w, [{label:"OK", kind:"primary", onClick:closeModal}]);
 }
 function refreshPanels(wrap){
   wrap = wrap || document.querySelector("#stage .sheet"); if(!wrap) return;
@@ -2215,6 +2223,7 @@ function swapCrew(){
 }
 function checkUpdates(){ try{ if(window.top && window.top!==window){ window.top.location.reload(); return; } }catch(e){} try{ location.replace(location.pathname+"?v="+Date.now()); }catch(e){ location.reload(); } }
 const CHANGELOG=[
+ {v:"2026.10.24.2",date:"2026-10-24",notes:["LOE pairing: there is no CA/CA or FO/FO pairing on the LOE (AQP Manual) — a Seat Support pilot (SSI) may fill either seat. Entering both crewmembers as CA, or both as FO, now shows a notice and a reminder banner; grading still works."]},
  {v:"2026.10.24",date:"2026-10-24",notes:[
   "New app: CQLOE.1 LOE Run-and-Grade — LOE A (HYD demand pump deferral + HYD PRESS SYS, RKSI–RJAA), LOE B (de-ice/anti-ice + LE flap failure and return to RKSI) and LOE C (flight crew deferral/return to gate + disruptive passenger and return to RKSI) in one app. Pick the scenario with the LOE A / B / C tabs.",
   "Graded like the CQLOE.1 grade sheet: 1.0 Ground through 8.0 After Landing, Handling / SOP / Automation / CRM for each crewmember, and a phase final grade (SAT, SAT W/ REPEAT, UNSAT, INCOMPLETE). The LOE result is Satisfactory, Unsatisfactory or Incomplete.",
@@ -2233,7 +2242,7 @@ function openRevisions(){ const wrap=document.createElement("div"); CHANGELOG.fo
 const HELP = {title:"How to Use the CQLOE.1 LOE Run-and-Grade", subtitle:"Instructor guide for the LOE app (LOE A, B and C). Tap a topic, or tap a ? next to a feature to jump straight to it.", topics:[
  {id:"overview", title:"What the tool is", intro:"One offline web page that runs the CQLOE.1 LOE: a phase-of-flight profile linked to the lesson guide, the LOE grade sheet for both crewmembers, both SES event sets, automatic phase and LOE results, an AIMS entry view and a Save-as-PDF record.", notes:["Pick LOE A, B or C with the tabs at the top. Each scenario keeps its own grades; the crew, date and instructor carry across.","Nothing you enter is sent anywhere — it stays on this device. The tool prepares your AIMS entry; it does not replace AIMS."]},
  {id:"crew", title:"Crew, date and FSTD", steps:["Enter the date (defaults to today), your name and employee number, and pick the FSTD.","Enter each crewmember's name, employee number and Duty (CA, FO or Seat Support), and the AIMS Module Attempt Status.","T/O and Ldg follow the PF of 2.0 Takeoff and 7.0 Landing automatically until you change them.","Swap trades the two crewmembers (name, Emp, Duty, Attempt) without moving any grades."]},
- {id:"duty", title:"PF / PM by phase (duty position)", intro:"The LOE is one point-A-to-B flight, flown once. AIMS asks the duty position for every phase, so the tool tracks it phase by phase.", steps:["Pick who is PF for the LOE. Every phase starts with that pilot as PF and the other as PM.","Ground and After Landing start with the left-seat Captain as PF, because the left-seat pilot taxis.","If duties change mid-flight, tap the Duty cell of the phase — PF and PM swap for that phase only. A dot marks a phase you changed.","The PF is graded Handling, SOP, Automation and CRM; the PM is graded SOP and CRM (Handling and Automation show N/A).","Seats are fixed for the flight: CA left / FO right; CA/CA — the LOE PF sits left; FO/FO — the PF sits right."]},
+ {id:"duty", title:"PF / PM by phase (duty position)", intro:"The LOE is one point-A-to-B flight, flown once. AIMS asks the duty position for every phase, so the tool tracks it phase by phase.", steps:["Pick who is PF for the LOE. Every phase starts with that pilot as PF and the other as PM.","Ground and After Landing start with the left-seat Captain as PF, because the left-seat pilot taxis.","If duties change mid-flight, tap the Duty cell of the phase — PF and PM swap for that phase only. A dot marks a phase you changed.","The PF is graded Handling, SOP, Automation and CRM; the PM is graded SOP and CRM (Handling and Automation show N/A).","Seats are fixed for the flight: CA left, FO right.","There is no CA/CA or FO/FO pairing on the LOE (AQP Manual). A Seat Support pilot (SSI) may fill either seat — set that pilot's Duty to Seat Support; the app flags a CA/CA or FO/FO entry."]},
  {id:"grading", title:"Grading a phase", steps:["Every grade box starts at 4. Tap a box to change it.","For 3 or below, pick the qualification standard(s) missed and/or type a note — a red corner means a comment is still required.","Add a comment to any phase with the 💬 button in the grade pop-up (it prints on the PDF and shows on the AIMS page).","Grey N/A boxes are not graded: PM Handling/Automation, Automation in 7.0 Landing and 8.0 After Landing (the qualification standards list N/A), and Seat Support."]},
  {id:"final", title:"Phase result and LOE result", steps:["Each phase result is automatic: any 2, 2-RF, 1 or 1-RF → UNSAT; any 2-RP or 1-RP → SAT W/ REPEAT; all N/A → INCOMPLETE; otherwise SAT.","Tap a phase result to set it yourself (for example, a phase that could not be completed). Tap again and choose Automatic to go back.","LOE result: any UNSAT phase → Unsatisfactory; any INCOMPLETE phase → Incomplete; otherwise Satisfactory. Sim malfunction or Illness makes it Incomplete; Unable to complete in time marks it Incomplete.","Unsatisfactory performance of the CQ crew, or of an unpaired crewmember, must be reported to the FAA (lesson guide). The Email notification button drafts the notice to the training offices."]},
  {id:"ses", title:"SES — Observable Pilot Actions", steps:["Each SES card lists the Observable Pilot Actions from the grade sheet.","When an action is observed, tap the crewmember's Crew/Duty chip to circle it (green). CA/FO actions use each pilot's rank; PF/PM actions use the duty position in the SES phase; CA-only actions go to the Captain (left seat); PM-only actions go to that phase's PM.","✓ All observed circles everything; Clear removes the circles.","Actions with Success Criteria Y that were not observed are flagged under the table."]},
