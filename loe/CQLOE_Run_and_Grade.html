@@ -664,6 +664,7 @@
   .pw-l{font-weight:800;font-size:14px;color:#1b2430}
   .pw-s{font-size:11.5px;color:#5b6572}
   .stlbl{gap:3px !important}.stinfo{border:1px solid #9db4d6;background:#eef3fa;color:#2b6fff;border-radius:50%;width:18px;height:18px;padding:0;font:800 11px Georgia,serif;font-style:italic;line-height:16px;cursor:pointer;margin:0 2px 0 1px;flex:none}
+  .crewwrap{display:grid !important;grid-template-columns:minmax(0,1fr) auto;column-gap:10px;align-items:center;padding-right:0 !important}.crewwrap>.meta{grid-column:1;flex-wrap:wrap !important;overflow:visible !important;row-gap:6px;margin:4px 0 !important}.crewwrap>.swapbtn{position:static !important;grid-column:2;grid-row:1 / span 2;align-self:center;white-space:nowrap}.crewwrap .meta select.dutysel[data-person]{width:78px !important;min-width:0 !important}.crewwrap .meta select.dutysel[data-take]{width:132px !important;min-width:0 !important}.crewwrap .meta input[data-field="name"]{width:115px !important}.crewwrap .meta input[data-field="emp"]{width:70px !important}
 </style>
 
 </head>
@@ -1264,7 +1265,7 @@ const SCEN = {
    ===================================================================== */
 const GRADES = ["5","4","3","2","2-RP","2-RF","1","1-RP","1-RF","N/A"];
 const BELOW = new Set(["3","2","2-RP","2-RF","1","1-RP","1-RF"]);
-const VERSION = "2026.10.25";
+const VERSION = "2026.10.25.1";
 const VERSION_DATE = "2026-10-24";
 const DIMS = [["H","Handling"],["SOP","SOP"],["A","Automation"],["CRM","CRM"]];
 const DIMNM = {H:"Handling",SOP:"SOP",A:"Automation",CRM:"CRM"};
@@ -2233,6 +2234,7 @@ function swapCrew(){
 }
 function checkUpdates(){ try{ if(window.top && window.top!==window){ window.top.location.reload(); return; } }catch(e){} try{ location.replace(location.pathname+"?v="+Date.now()); }catch(e){ location.reload(); } }
 const CHANGELOG=[
+ {v:"2026.10.25.1",date:"2026-10-25",notes:["Crew rows: shorter Duty box; the Swap button now sits in its own column beside the two pilot rows, and a row wraps to a second line on a narrower iPad screen instead of running under the Swap button."]},
  {v:"2026.10.25",date:"2026-10-25",notes:["Crew rows tidied: “Special Tracking” is now labeled ST (the AIMS abbreviation) with an ⓘ button that explains it."]},
  {v:"2026.10.24.3",date:"2026-10-24",notes:["Pairing notices now cite the manuals: AQPM Version 4 §1.4 (Table 1.4.1 Crew Pairing Summary, Table 1.4.3 LOE Seat Substitution) and I/E AQP Manual pp. 49–50.","New: a notice if both crewmembers are marked Special Tracking — pilots in Special Tracking will not be paired together during evaluations (AQPM §1.4 Special Tracking Considerations)."]},
  {v:"2026.10.24.2",date:"2026-10-24",notes:["LOE pairing: there is no CA/CA or FO/FO pairing on the LOE — a Seat Support pilot (SSI) may fill either seat. Entering both crewmembers as CA, or both as FO, now shows a notice and a reminder banner; grading still works."]},
