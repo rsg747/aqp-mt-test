@@ -663,6 +663,7 @@
   .pw-item.alt{background:#f6f7f9}
   .pw-l{font-weight:800;font-size:14px;color:#1b2430}
   .pw-s{font-size:11.5px;color:#5b6572}
+  .stlbl{gap:3px !important}.stinfo{border:1px solid #9db4d6;background:#eef3fa;color:#2b6fff;border-radius:50%;width:18px;height:18px;padding:0;font:800 11px Georgia,serif;font-style:italic;line-height:16px;cursor:pointer;margin:0 2px 0 1px;flex:none}
 </style>
 
 </head>
@@ -1263,7 +1264,7 @@ const SCEN = {
    ===================================================================== */
 const GRADES = ["5","4","3","2","2-RP","2-RF","1","1-RP","1-RF","N/A"];
 const BELOW = new Set(["3","2","2-RP","2-RF","1","1-RP","1-RF"]);
-const VERSION = "2026.10.24.3";
+const VERSION = "2026.10.25";
 const VERSION_DATE = "2026-10-24";
 const DIMS = [["H","Handling"],["SOP","SOP"],["A","Automation"],["CRM","CRM"]];
 const DIMNM = {H:"Handling",SOP:"SOP",A:"Automation",CRM:"CRM"};
@@ -1433,7 +1434,7 @@ function buildSheet(){
       <label>Attempt <select class="dutysel" data-take="${cm}">${attemptOptsHTML(take[cm])}</select></label>
       <label>T/O <select class="dutysel" data-cs="to" data-csp="${cm}">${[0,1,2,3,4,5].map(n=>`<option${String(n)===String(crewSession[cm].to)?" selected":""}>${n}</option>`).join("")}</select></label>
       <label>Ldg <select class="dutysel" data-cs="ldg" data-csp="${cm}">${[0,1,2,3,4,5].map(n=>`<option${String(n)===String(crewSession[cm].ldg)?" selected":""}>${n}</option>`).join("")}</select></label>
-      <label>Special Tracking <select class="dutysel" data-cs="spec" data-csp="${cm}"><option${crewSession[cm].spec!=="Yes"?" selected":""}>No</option><option${crewSession[cm].spec==="Yes"?" selected":""}>Yes</option></select></label>
+      <label class="stlbl">ST<button type="button" class="stinfo" data-stinfo aria-label="What is ST?">i</button> <select class="dutysel" data-cs="spec" data-csp="${cm}"><option${crewSession[cm].spec!=="Yes"?" selected":""}>No</option><option${crewSession[cm].spec==="Yes"?" selected":""}>Yes</option></select></label>
     </div>`;
   const sesTxt = sc.ses.map(s=>`SES ${s.n} · ${esc(s.name)} (${PHASES[+s.phase-1].code} ${esc(PHASES[+s.phase-1].nm)})`).join(" &nbsp;·&nbsp; ");
   wrap.innerHTML = `
@@ -2232,6 +2233,7 @@ function swapCrew(){
 }
 function checkUpdates(){ try{ if(window.top && window.top!==window){ window.top.location.reload(); return; } }catch(e){} try{ location.replace(location.pathname+"?v="+Date.now()); }catch(e){ location.reload(); } }
 const CHANGELOG=[
+ {v:"2026.10.25",date:"2026-10-25",notes:["Crew rows tidied: “Special Tracking” is now labeled ST (the AIMS abbreviation) with an ⓘ button that explains it."]},
  {v:"2026.10.24.3",date:"2026-10-24",notes:["Pairing notices now cite the manuals: AQPM Version 4 §1.4 (Table 1.4.1 Crew Pairing Summary, Table 1.4.3 LOE Seat Substitution) and I/E AQP Manual pp. 49–50.","New: a notice if both crewmembers are marked Special Tracking — pilots in Special Tracking will not be paired together during evaluations (AQPM §1.4 Special Tracking Considerations)."]},
  {v:"2026.10.24.2",date:"2026-10-24",notes:["LOE pairing: there is no CA/CA or FO/FO pairing on the LOE — a Seat Support pilot (SSI) may fill either seat. Entering both crewmembers as CA, or both as FO, now shows a notice and a reminder banner; grading still works."]},
  {v:"2026.10.24",date:"2026-10-24",notes:[
@@ -2313,6 +2315,9 @@ function initToolbar(){
   bind("save",saveSession); bind("saved",openSaved); bind("new",newCrew); bind("pdf",savePDF); bind("notify",onNotify); bind("simdisc",openSimDisc); bind("paper",openPaperwork); updateSimDiscBtn();
   const st=document.getElementById("tbstatus"); if(st) st.textContent=lsAvail()?"":"Note: in-app saving isn't available here — use Save as PDF to keep records.";
 }
+document.addEventListener("click",function(e){ const b=e.target.closest("[data-stinfo]"); if(!b) return; e.preventDefault(); e.stopPropagation();
+  const m=document.createElement("div"); m.className="mo-msg"; m.innerHTML="<b>ST = Special Tracking</b> — the same abbreviation AIMS uses.<br><br>Set <b>Yes</b> when the pilot is in the Special Tracking program (AQPM Table 4.4.1). It goes on the AIMS view and the PDF. Pilots in Special Tracking are not paired together on an evaluation (AQPM §1.4).";
+  showModal("ST — Special Tracking", m, [{label:"OK",kind:"primary",onClick:closeModal}]); }, true);
 document.querySelectorAll(".sctab").forEach(t=>t.addEventListener("click",()=>{ SC=t.dataset.sc; syncTabs(); render(); }));
 document.querySelectorAll(".xtab").forEach(t=>t.addEventListener("click",()=>{ VIEW=t.dataset.x; syncTabs(); render(); }));
 (function boot(){

@@ -961,7 +961,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var n,r,i,a,
 const GRADES = ["5","4","3","2","2-RP","2-RF","1","1-RP","1-RF","N/A"];
 const BELOW = new Set(["3","2","2-RP","2-RF","1","1-RP","1-RF"]);
 /* ---- document version (bump on each update) ---- */
-const VERSION = "2026.10.25";
+const VERSION = "2026.10.25.2";
 const VERSION_DATE = "2026-10-25";
 /* ---- data models ---- */
 // rows present per exercise, in AIMS/PF then PM order
@@ -1564,7 +1564,7 @@ function buildSheet(ex){
       </label>
       <label>T/O <select class="dutysel" data-cs="to" data-person="pf1st">${[0,1,2,3,4,5,6,7,8,9].map(n=>`<option${String(n)===String(crewSession.pf1st.to)?" selected":""}>${n}</option>`).join("")}</select></label>
       <label>Ldg <select class="dutysel" data-cs="ldg" data-person="pf1st">${[0,1,2,3,4,5,6,7,8,9].map(n=>`<option${String(n)===String(crewSession.pf1st.ldg)?" selected":""}>${n}</option>`).join("")}</select></label>
-      <label>Special Tracking <select class="dutysel" data-cs="spec" data-person="pf1st"><option${crewSession.pf1st.spec!=="Yes"?" selected":""}>No</option><option${crewSession.pf1st.spec==="Yes"?" selected":""}>Yes</option></select></label>
+      <label class="stlbl">ST<button type="button" class="stinfo" data-stinfo aria-label="What is ST?">i</button> <select class="dutysel" data-cs="spec" data-person="pf1st"><option${crewSession.pf1st.spec!=="Yes"?" selected":""}>No</option><option${crewSession.pf1st.spec==="Yes"?" selected":""}>Yes</option></select></label>
     </div>
     <div class="meta">
       <label>PF 2nd <input type="text" data-person="pf2nd" data-field="name" value="${person.pf2nd.name.replace(/"/g,'&quot;')}"></label>
@@ -1583,7 +1583,7 @@ function buildSheet(ex){
       </label>
       <label>T/O <select class="dutysel" data-cs="to" data-person="pf2nd">${[0,1,2,3,4,5,6,7,8,9].map(n=>`<option${String(n)===String(crewSession.pf2nd.to)?" selected":""}>${n}</option>`).join("")}</select></label>
       <label>Ldg <select class="dutysel" data-cs="ldg" data-person="pf2nd">${[0,1,2,3,4,5,6,7,8,9].map(n=>`<option${String(n)===String(crewSession.pf2nd.ldg)?" selected":""}>${n}</option>`).join("")}</select></label>
-      <label>Special Tracking <select class="dutysel" data-cs="spec" data-person="pf2nd"><option${crewSession.pf2nd.spec!=="Yes"?" selected":""}>No</option><option${crewSession.pf2nd.spec==="Yes"?" selected":""}>Yes</option></select></label>
+      <label class="stlbl">ST<button type="button" class="stinfo" data-stinfo aria-label="What is ST?">i</button> <select class="dutysel" data-cs="spec" data-person="pf2nd"><option${crewSession.pf2nd.spec!=="Yes"?" selected":""}>No</option><option${crewSession.pf2nd.spec==="Yes"?" selected":""}>Yes</option></select></label>
     </div>
     <button type="button" class="swapbtn" data-swap title="Swap PF 1st and PF 2nd — name, Emp, Duty and Take trade places; grades stay in place">⇅ Swap</button>
     </div>
@@ -2711,6 +2711,7 @@ function toast(msg){ let t=document.getElementById("toast"); if(!t){ t=document.
 /* generic modal */
 function closeModal(){ document.querySelectorAll(".mo-overlay").forEach(o=>o.remove()); }
 const CHANGELOG=[
+ {v:"2026.10.25.2",date:"2026-10-25",notes:["Crew rows tidied: “Special Tracking” is now labeled ST (the AIMS abbreviation) with an ⓘ button that explains it — Briefed has one too. Frees room on the iPad crew line."]},
  {v:"2026.10.25",date:"2026-10-25",notes:["Fix: changing a pilot's T/O, Ldg or Special Tracking box could overwrite that pilot's Duty behind the scenes (the screen still showed CA/FO), which could throw off the seat and N/A rules for that crew. The Duty box is now the only thing that sets Duty. If a crew was graded after changing T/O, Ldg or Special Tracking, re-check its Duty boxes and N/A cells."]},
  {v:"2026.10.24",date:"2026-10-24",notes:["Briefing room: new 📺 Briefing button — presents the CQMT1.1 briefing / debriefing deck full screen so the iPad can be mirrored to the briefing-room Apple TV (Control Center → Screen Mirroring). Tap or swipe to move, jump to Briefing / Event plan / Debriefing; slides load over Wi-Fi."]},
  {v:"2026.10.14",date:"2026-10-14",notes:["Duty fix (CA/CA and FO/FO): a Duty pick on the iPad now always takes on the first try. The app re-reads the Duty boxes before every redraw and on every tap, and the retired crew-list lookup can no longer change a pilot's duty when an Emp number is entered."]},
@@ -3525,5 +3526,14 @@ document.querySelectorAll(".xtab").forEach(t=>t.addEventListener("click",()=>{
 })();
 </script>
 
+<style>.stlbl{gap:3px !important}.stinfo{border:1px solid #9db4d6;background:#eef3fa;color:#2b6fff;border-radius:50%;width:18px;height:18px;padding:0;font:800 11px Georgia,serif;font-style:italic;line-height:16px;cursor:pointer;margin:0 2px 0 1px;flex:none}</style>
+<script>
+document.addEventListener("click",function(e){
+  var b=e.target.closest("[data-stinfo],[data-briefinfo]"); if(!b) return; e.preventDefault(); e.stopPropagation();
+  var m=document.createElement("div"); m.className="mo-msg";
+  if(b.hasAttribute("data-stinfo")){ m.innerHTML="<b>ST = Special Tracking</b> — the same abbreviation AIMS uses.<br><br>Set <b>Yes</b> when the pilot is in the Special Tracking program (AQPM Table 4.4.1). It goes on the AIMS Module Status, the PDF and the email notification. Two pilots in Special Tracking are not paired together on an evaluation."; showModal("ST — Special Tracking", m, [{label:"OK",kind:"primary",onClick:closeModal}]); }
+  else { m.innerHTML="<b>Briefed = Briefing completed</b> — recorded in AIMS for the MV module.<br><br>Set <b>Yes</b> once the CQMV.1 briefing is done. Presenting the briefing deck through the Event Plan offers to set it for both pilots."; showModal("Briefed — Briefing completed", m, [{label:"OK",kind:"primary",onClick:closeModal}]); }
+}, true);
+</script>
 </body>
 </html>
