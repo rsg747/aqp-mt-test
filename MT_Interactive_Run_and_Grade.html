@@ -961,8 +961,8 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var n,r,i,a,
 const GRADES = ["5","4","3","2","2-RP","2-RF","1","1-RP","1-RF","N/A"];
 const BELOW = new Set(["3","2","2-RP","2-RF","1","1-RP","1-RF"]);
 /* ---- document version (bump on each update) ---- */
-const VERSION = "2026.10.24";
-const VERSION_DATE = "2026-10-24";
+const VERSION = "2026.10.25";
+const VERSION_DATE = "2026-10-25";
 /* ---- data models ---- */
 // rows present per exercise, in AIMS/PF then PM order
 const MT_EVENTS = [
@@ -1602,9 +1602,9 @@ function buildSheet(ex){
   wrap.querySelector(".profhost").appendChild(buildProfile(ex));
   wrap.querySelector(".gridwrap").appendChild(buildGrid(ex,events));
   wrap.querySelectorAll(".dutysel").forEach(sel=>{
-    if(!sel.dataset.person) return;            // the Attempt select shares this class
+    if(!sel.dataset.person || sel.dataset.cs) return;   // T/O, Ldg, Special Tracking, Briefing boxes are not Duty            // the Attempt select shares this class
     sel.dataset.rendered=sel.value;            // what the box showed when it was drawn
-    const commit=()=>{ if(duty[sel.dataset.person]!==sel.value){ duty[sel.dataset.person]=sel.value; render(); } };
+    const commit=()=>{ if(["CA","FO","Seat Support"].indexOf(sel.value)<0) return; if(duty[sel.dataset.person]!==sel.value){ duty[sel.dataset.person]=sel.value; render(); } };
     sel.addEventListener("change",commit);     // re-apply duty rules everywhere
     sel.addEventListener("input",commit);      // iPad: some pickers report via input
     sel.addEventListener("blur",commit);       // iPad: catch a pick that fired no event
@@ -2711,6 +2711,7 @@ function toast(msg){ let t=document.getElementById("toast"); if(!t){ t=document.
 /* generic modal */
 function closeModal(){ document.querySelectorAll(".mo-overlay").forEach(o=>o.remove()); }
 const CHANGELOG=[
+ {v:"2026.10.25",date:"2026-10-25",notes:["Fix: changing a pilot's T/O, Ldg or Special Tracking box could overwrite that pilot's Duty behind the scenes (the screen still showed CA/FO), which could throw off the seat and N/A rules for that crew. The Duty box is now the only thing that sets Duty. If a crew was graded after changing T/O, Ldg or Special Tracking, re-check its Duty boxes and N/A cells."]},
  {v:"2026.10.24",date:"2026-10-24",notes:["Briefing room: new 📺 Briefing button — presents the CQMT1.1 briefing / debriefing deck full screen so the iPad can be mirrored to the briefing-room Apple TV (Control Center → Screen Mirroring). Tap or swipe to move, jump to Briefing / Event plan / Debriefing; slides load over Wi-Fi."]},
  {v:"2026.10.14",date:"2026-10-14",notes:["Duty fix (CA/CA and FO/FO): a Duty pick on the iPad now always takes on the first try. The app re-reads the Duty boxes before every redraw and on every tap, and the retired crew-list lookup can no longer change a pilot's duty when an Emp number is entered."]},
  {v:"2026.10.13",date:"2026-10-05",notes:["Position tracking: tapping a point on the profile now lights that point green and highlights its grade column(s) below; tapping a grade column header lights the matching point(s) on the profile. Both stay lit after closing the pop-up and after switching runs, so you can see where you are in the profile at a glance."]},
@@ -3356,7 +3357,8 @@ function syncDutyFromUI(){
   return changed;
 }
 document.addEventListener("pointerdown",()=>{ try{ if(syncDutyFromUI()) render(); }catch(e){} },true);
-function render(){
+function _fixDuty(){ ["pf1st","pf2nd"].forEach(function(pk){ if(["CA","FO","Seat Support"].indexOf(duty[pk])<0){ var sel=document.querySelector('select.dutysel[data-person="'+pk+'"]:not([data-cs])'); duty[pk]=(sel&&["CA","FO","Seat Support"].indexOf(sel.value)>=0)?sel.value:(pk==="pf1st"?"CA":"FO"); } }); }
+function render(){ try{ _fixDuty(); }catch(e){}
   try{ syncDutyFromUI(); }catch(e){}
   document.body.classList.toggle("run1",RUN===1);
   document.body.classList.toggle("run2",RUN===2);

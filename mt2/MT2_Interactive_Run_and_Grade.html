@@ -969,8 +969,8 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var n,r,i,a,
 const GRADES = ["5","4","3","2","2-RP","2-RF","1","1-RP","1-RF","N/A"];
 const BELOW = new Set(["3","2","2-RP","2-RF","1","1-RP","1-RF"]);
 /* ---- document version (bump on each update) ---- */
-const VERSION = "2026.10.24";
-const VERSION_DATE = "2026-10-24";
+const VERSION = "2026.10.25";
+const VERSION_DATE = "2026-10-25";
 /* ---- data models ---- */
 // rows present per exercise, in AIMS/PF then PM order
 const MT_EVENTS = [
@@ -1467,9 +1467,9 @@ function buildSheet(ex){
   wrap.querySelector(".profhost").appendChild(buildProfile(ex));
   wrap.querySelector(".gridwrap").appendChild(buildGrid(ex,events));
   wrap.querySelectorAll(".dutysel").forEach(sel=>{
-    if(!sel.dataset.person) return;            // the Attempt select shares this class
+    if(!sel.dataset.person || sel.dataset.cs) return;   // T/O, Ldg, Special Tracking, Briefing boxes are not Duty            // the Attempt select shares this class
     sel.dataset.rendered=sel.value;            // what the box showed when it was drawn
-    const commit=()=>{ if(duty[sel.dataset.person]!==sel.value){ duty[sel.dataset.person]=sel.value; render(); } };
+    const commit=()=>{ if(["CA","FO","Seat Support"].indexOf(sel.value)<0) return; if(duty[sel.dataset.person]!==sel.value){ duty[sel.dataset.person]=sel.value; render(); } };
     sel.addEventListener("change",commit);     // re-apply duty rules everywhere
     sel.addEventListener("input",commit);      // iPad: some pickers report via input
     sel.addEventListener("blur",commit);       // iPad: catch a pick that fired no event
@@ -2595,6 +2595,7 @@ function toast(msg){ let t=document.getElementById("toast"); if(!t){ t=document.
 /* generic modal */
 function closeModal(){ document.querySelectorAll(".mo-overlay").forEach(o=>o.remove()); }
 const CHANGELOG=[
+ {v:"2026.10.25",date:"2026-10-25",notes:["Fix: changing a pilot's T/O, Ldg or Special Tracking box could overwrite that pilot's Duty behind the scenes (the screen still showed CA/FO), which could throw off the seat and N/A rules for that crew. The Duty box is now the only thing that sets Duty. If a crew was graded after changing T/O, Ldg or Special Tracking, re-check its Duty boxes and N/A cells."]},
  {v:"2026.10.24",date:"2026-10-24",notes:["Briefing room: new 📺 Briefing button — presents the CQMT2.1 briefing / debriefing deck and the Visual Inspection Exam full screen so the iPad can be mirrored to the briefing-room Apple TV (Control Center → Screen Mirroring). In the exam, Reveal finding (or Next) shows each planted finding. The Knowledge Validation (oral) is listed as coming soon. Slides load over Wi-Fi."]},
  {v:"2026.10.22",date:"2026-10-22",notes:["Updated to CQMT2.1 lesson guide Rev 2026.10.19. New Circuit 9: RTO (Crew Task) — engine fail at ~20 kts GS, FO starts the takeoff as PF and the CA takes control to reject; new 2.5.1 column, profile point and lesson-guide pop-up. Graded per the new grade sheet: CA always as PF, FO always as PM; CA/FO and Seat Support pairings once (first half); CA/CA and FO/FO both halves, and in CA/CA the right-seat CA receives PM ratings. Circuit 10 (2.6 / 7.6) in CA/CA: PM ratings are now N/A per the new grade sheet.","Circuit 1 is now SMGCS Taxi Out/In and both taxis are crew tasks: the left-seat pilot taxis, the CA is graded as PF and the FO as PM (an FO is never graded as PF). CA/FO and Seat Support pairings: Taxi-Out and Taxi-In both in the first half (Taxi-In after the first half's last landing). CA/CA and FO/FO: Taxi-Out starts the first half (Run 1), Taxi-In starts the second half (Run 2). The old Circuit 9 taxi-in point moved to the end of the profile.","All lesson-guide pop-ups rebuilt word-for-word from Rev 2026.10.19 (new taxi clearances via H8, start position holding short of 7L, ICAO cloud format, TCAS descend to 2,000, GPWS clearance, ≥5 NM repositions, Circuit 10 reposition to 7L, recency IP note) with new page numbers.","AIMS entry and PDF order now follow the new grade sheet (8.1.3 after 1.4.2; 2.5.1 before 2.6).","Not Required marker (same as the MV tool): a crew-task or Captain-only profile point whose grades are all N/A this run greys out with a red X and a “Not Required — Duty-Specific Pairing” tag, and its lesson-guide pop-up shows a Not Required banner.","FO / Seat Support: the crew tasks (Circuits 1, 6 and 9) are graded in Run 1, where they are flown, with the FO graded as PM. When the FO is entered as PF 1st, those grades and comments post to the FO’s PM ratings automatically, so the AIMS screen, PDF and Data Store are correct. Either crew order works."]},
  {v:"2026.10.14",date:"2026-10-14",notes:["Duty fix (CA/CA and FO/FO): a Duty pick on the iPad now always takes on the first try. The app re-reads the Duty boxes before every redraw and on every tap, and the retired crew-list lookup can no longer change a pilot's duty when an Emp number is entered."]},
@@ -3220,7 +3221,8 @@ function syncDutyFromUI(){
   return changed;
 }
 document.addEventListener("pointerdown",()=>{ try{ if(syncDutyFromUI()) render(); }catch(e){} },true);
-function render(){
+function _fixDuty(){ ["pf1st","pf2nd"].forEach(function(pk){ if(["CA","FO","Seat Support"].indexOf(duty[pk])<0){ var sel=document.querySelector('select.dutysel[data-person="'+pk+'"]:not([data-cs])'); duty[pk]=(sel&&["CA","FO","Seat Support"].indexOf(sel.value)>=0)?sel.value:(pk==="pf1st"?"CA":"FO"); } }); }
+function render(){ try{ _fixDuty(); }catch(e){}
   try{ syncDutyFromUI(); }catch(e){}
   document.body.classList.toggle("run1",RUN===1);
   document.body.classList.toggle("run2",RUN===2);
