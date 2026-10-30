@@ -969,7 +969,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var n,r,i,a,
 const GRADES = ["5","4","3","2","2-RP","2-RF","1","1-RP","1-RF","N/A"];
 const BELOW = new Set(["3","2","2-RP","2-RF","1","1-RP","1-RF"]);
 /* ---- document version (bump on each update) ---- */
-const VERSION = "2026.10.30.1";
+const VERSION = "2026.10.30.2";
 const VERSION_DATE = "2026-10-30";
 /* ---- data models ---- */
 // rows present per exercise, in AIMS/PF then PM order
@@ -1161,7 +1161,7 @@ const duty = { pf1st: "CA", pf2nd: "FO" };  // CA | FO | Seat Support
 const person = { pf1st:{name:"",emp:""}, pf2nd:{name:"",emp:""} };
 let sessionDate = ""; let dateUserSet = false;
 let instructor = {name:"", emp:""};
-let crewSession = {pf1st:{to:"1",ldg:"3",spec:"No"}, pf2nd:{to:"1",ldg:"3",spec:"No"}};
+let crewSession = {pf1st:{to:"1",ldg:"3",spec:"No",kv:"",kvAt:""}, pf2nd:{to:"1",ldg:"3",spec:"No",kv:"",kvAt:""}};
 const ATTEMPT_OPTS = ["Initial Attempt","Remedial Attempt 1","Remedial Attempt 2","Remedial Attempt 3","Remedial Attempt 4","Repeat Attempt 1","Repeat Attempt 2","Repeat Attempt 3","Repeat Attempt 4"];
 const take = {pf1st:"Initial Attempt", pf2nd:"Initial Attempt"};
 /* AIMS 'Module Attempt Status'. Older saved sessions stored a Take number: 1 -> Initial Attempt, n -> Repeat Attempt n-1. */
@@ -1430,6 +1430,7 @@ function buildSheet(ex){
       <label>T/O <select class="dutysel" data-cs="to" data-person="pf1st">${[0,1,2,3,4,5,6,7,8,9].map(n=>`<option${String(n)===String(crewSession.pf1st.to)?" selected":""}>${n}</option>`).join("")}</select></label>
       <label>Ldg <select class="dutysel" data-cs="ldg" data-person="pf1st">${[0,1,2,3,4,5,6,7,8,9].map(n=>`<option${String(n)===String(crewSession.pf1st.ldg)?" selected":""}>${n}</option>`).join("")}</select></label>
       <label class="stlbl">ST<button type="button" class="stinfo" data-stinfo aria-label="What is ST?">i</button> <select class="dutysel" data-cs="spec" data-person="pf1st"><option${crewSession.pf1st.spec!=="Yes"?" selected":""}>No</option><option${crewSession.pf1st.spec==="Yes"?" selected":""}>Yes</option></select></label>
+      <label class="stlbl">KV<button type="button" class="stinfo" data-kvinfo aria-label="Knowledge Validation">i</button> <select class="dutysel kvsel${crewSession.pf1st.kv==="Sat"?" sat":crewSession.pf1st.kv==="Unsat"?" unsat":""}" data-cs="kv" data-person="pf1st"><option value=""${!crewSession.pf1st.kv?" selected":""}>—</option><option value="Sat"${crewSession.pf1st.kv==="Sat"?" selected":""}>Sat</option><option value="Unsat"${crewSession.pf1st.kv==="Unsat"?" selected":""}>Unsat</option></select></label>
     </div>
     <div class="meta">
       <label>PF 2nd <input type="text" data-person="pf2nd" data-field="name" value="${person.pf2nd.name.replace(/"/g,'&quot;')}"></label>
@@ -1449,6 +1450,7 @@ function buildSheet(ex){
       <label>T/O <select class="dutysel" data-cs="to" data-person="pf2nd">${[0,1,2,3,4,5,6,7,8,9].map(n=>`<option${String(n)===String(crewSession.pf2nd.to)?" selected":""}>${n}</option>`).join("")}</select></label>
       <label>Ldg <select class="dutysel" data-cs="ldg" data-person="pf2nd">${[0,1,2,3,4,5,6,7,8,9].map(n=>`<option${String(n)===String(crewSession.pf2nd.ldg)?" selected":""}>${n}</option>`).join("")}</select></label>
       <label class="stlbl">ST<button type="button" class="stinfo" data-stinfo aria-label="What is ST?">i</button> <select class="dutysel" data-cs="spec" data-person="pf2nd"><option${crewSession.pf2nd.spec!=="Yes"?" selected":""}>No</option><option${crewSession.pf2nd.spec==="Yes"?" selected":""}>Yes</option></select></label>
+      <label class="stlbl">KV<button type="button" class="stinfo" data-kvinfo aria-label="Knowledge Validation">i</button> <select class="dutysel kvsel${crewSession.pf2nd.kv==="Sat"?" sat":crewSession.pf2nd.kv==="Unsat"?" unsat":""}" data-cs="kv" data-person="pf2nd"><option value=""${!crewSession.pf2nd.kv?" selected":""}>—</option><option value="Sat"${crewSession.pf2nd.kv==="Sat"?" selected":""}>Sat</option><option value="Unsat"${crewSession.pf2nd.kv==="Unsat"?" selected":""}>Unsat</option></select></label>
     </div>
     <button type="button" class="swapbtn" data-swap title="Swap PF 1st and PF 2nd — name, Emp, Duty and Take trade places; grades stay in place">⇅ Swap</button>
     </div>
@@ -1480,7 +1482,7 @@ function buildSheet(ex){
   wrap.querySelectorAll(".meta input[data-instr]").forEach(inp=>{
     inp.addEventListener("input",()=>{ instructor[inp.dataset.instr]=inp.value; });
   });
-  wrap.querySelectorAll("[data-cs]").forEach(sel=>{ sel.addEventListener("change",()=>{ crewSession[sel.dataset.person][sel.dataset.cs]=sel.value; if(typeof autosave==="function") autosave(); }); });
+  wrap.querySelectorAll("[data-cs]").forEach(sel=>{ sel.addEventListener("change",()=>{ crewSession[sel.dataset.person][sel.dataset.cs]=sel.value; if(sel.dataset.cs==="kv"){ crewSession[sel.dataset.person].kvAt = sel.value ? new Date().toISOString() : ""; sel.classList.toggle("sat", sel.value==="Sat"); sel.classList.toggle("unsat", sel.value==="Unsat"); if(sel.value==="Unsat" && typeof window.KV_UNSAT_NOTE==="function") window.KV_UNSAT_NOTE(); } if(typeof autosave==="function") autosave(); }); });
   wrap.querySelectorAll("[data-take]").forEach(ts=>{ const pk=ts.dataset.take; ts.value=take[pk]; ts.addEventListener("change",()=>{ take[pk]=ts.value; }); });
   wrap.querySelectorAll(".meta input[data-field]").forEach(inp=>{
     inp.addEventListener("input",()=>{
@@ -2413,7 +2415,7 @@ function buildAIMS(){
     <div class="head"><h1>${title}</h1>
     </div>
     <div class="note">Grades mirror the MT Run sheets (read-only). Enter into AIMS top-to-bottom: each student PF then PM · Seat Support = not graded. <span class="qbtn" data-help="aims">?</span></div>
-    <div class="note" style="font-weight:600">Module Status — PF 1st: T/O ${esc(crewSession.pf1st.to)} · Ldg ${esc(crewSession.pf1st.ldg)} · Special ${esc(crewSession.pf1st.spec)} &nbsp;|&nbsp; PF 2nd: T/O ${esc(crewSession.pf2nd.to)} · Ldg ${esc(crewSession.pf2nd.ldg)} · Special ${esc(crewSession.pf2nd.spec)}</div>
+    <div class="note" style="font-weight:600">Module Status — PF 1st: T/O ${esc(crewSession.pf1st.to)} · Ldg ${esc(crewSession.pf1st.ldg)} · Special ${esc(crewSession.pf1st.spec)} · KV ${esc(kvLabel(crewSession.pf1st.kv))} &nbsp;|&nbsp; PF 2nd: T/O ${esc(crewSession.pf2nd.to)} · Ldg ${esc(crewSession.pf2nd.ldg)} · Special ${esc(crewSession.pf2nd.spec)} · KV ${esc(kvLabel(crewSession.pf2nd.kv))}</div>
     <div id="aimsStudents"></div>
   `;
   const host=wrap.querySelector("#aimsStudents");
@@ -2581,7 +2583,7 @@ function applySnapshot(s){
   if(s.person){ ["pf1st","pf2nd"].forEach(p=>{ person[p].name=(s.person[p]&&s.person[p].name)||""; person[p].emp=(s.person[p]&&s.person[p].emp)||""; }); }
   if(s.duty){ duty.pf1st=s.duty.pf1st||duty.pf1st; duty.pf2nd=s.duty.pf2nd||duty.pf2nd; }
   sessionDate = s.sessionDate||""; dateUserSet = !!s.dateUserSet;
-  ["pf1st","pf2nd"].forEach(pk=>{ const d={to:"1",ldg:"3",spec:"No"}; const v=(s.crewSession&&s.crewSession[pk])||{}; crewSession[pk]={to:v.to!==undefined?v.to:d.to, ldg:v.ldg!==undefined?v.ldg:d.ldg, spec:v.spec||d.spec}; });
+  ["pf1st","pf2nd"].forEach(pk=>{ const d={to:"1",ldg:"3",spec:"No"}; const v=(s.crewSession&&s.crewSession[pk])||{}; crewSession[pk]={to:v.to!==undefined?v.to:d.to, ldg:v.ldg!==undefined?v.ldg:d.ldg, spec:v.spec||d.spec, kv:(v.kv==="Sat"||v.kv==="Unsat")?v.kv:"", kvAt:v.kvAt||""}; });
   clearObj(incReason); if(s.incReason) Object.assign(incReason, s.incReason); else if(s.simFail){ Object.keys(s.simFail).forEach(k=>{ if(s.simFail[k]) incReason[k]="sim"; }); }
   clearObj(ssNotes); if(s.ssNotes) Object.assign(ssNotes, s.ssNotes);
   if(s.instructor){ instructor.name=s.instructor.name||""; instructor.emp=s.instructor.emp||""; } if(s.take){ take.pf1st=normAttempt(s.take.pf1st); take.pf2nd=normAttempt(s.take.pf2nd); }
@@ -2595,6 +2597,7 @@ function toast(msg){ let t=document.getElementById("toast"); if(!t){ t=document.
 /* generic modal */
 function closeModal(){ document.querySelectorAll(".mo-overlay").forEach(o=>o.remove()); }
 const CHANGELOG=[
+ {v:"2026.10.30.2",date:"2026-10-30",notes:["KV grading: a KV box (— / Sat / Unsat) beside each pilot records the CQMT2.1 Knowledge Validation (Preflight Pictorial Visual Inspection + Airplane Systems and Limitations). It shows in the AIMS Module Status line (the AIMS form's KV status field), on the PDF AIMS page. Tap the i for the standard (80% corrected to 100%; Unsat = retrain and retest). Starting the sim timer warns if a pilot's KV is not Satisfactory."]},
  {v:"2026.10.30.1",date:"2026-10-30",notes:["Briefing room updated to the 10/27/2026 CQMT2.1 documents: the new CQMT2.1 Briefing / Debriefing deck (the KV now comes right after the intro slides); the KV – Preflight Pictorial Visual Inspection (10/28/2026) replaces the old Visual Inspection Exam; and the KV – Airplane Systems and Limitations question banks (Sets 1–5) replace ‘coming soon’. In the KV decks, ask the question, then tap Reveal answer / Show abnormal (or Next) to show what the slide keeps hidden until the click. References updated to AQPM Version 5 (recency now AQPM 5.2)."]},
  {v:"2026.10.26.1",date:"2026-10-26",notes:["Works without internet: the first time you open this app with internet it saves a copy on the iPad, so it still opens and grades with no Wi-Fi (sim building outage, in flight). With internet it always loads the newest version first, exactly as before; if the connection is slow it opens the saved copy and offers ‘Update now’ when the newer version finishes downloading. An ‘Offline’ tag shows at the bottom-left when there is no internet. Briefing slides still need internet."]},
  {v:"2026.10.25.3",date:"2026-10-25",notes:["Crew rows: shorter Duty box; the Swap button now sits in its own column beside the two pilot rows, and a row wraps to a second line on a narrower iPad screen instead of running under the Swap button."]},
@@ -2684,7 +2687,7 @@ function doNew(){
   clearObj(state); clearObj(justCell); clearObj(taskNotes); simDisc.items=[]; try{ updateSimDiscBtn(); }catch(e){}
   person.pf1st.name=""; person.pf1st.emp=""; person.pf2nd.name=""; person.pf2nd.emp="";
   duty.pf1st="CA"; duty.pf2nd="FO"; sessionDate=todayISO(); dateUserSet=false;
-  clearObj(timers); clearObj(incReason); clearObj(ssNotes); instructor.name=""; instructor.emp=""; take.pf1st="Initial Attempt"; take.pf2nd="Initial Attempt"; RUN=1; EX="MT";
+  clearObj(timers); clearObj(incReason); clearObj(ssNotes); instructor.name=""; instructor.emp=""; take.pf1st="Initial Attempt"; take.pf2nd="Initial Attempt"; RUN=1; EX="MT"; ["pf1st","pf2nd"].forEach(pk=>{ crewSession[pk].kv=""; crewSession[pk].kvAt=""; });
   document.querySelectorAll(".rtab").forEach(x=>x.classList.toggle("on", x.dataset.run==="1"));
   document.querySelectorAll(".xtab").forEach(x=>x.classList.toggle("on", x.dataset.x==="MT"));
   autosave(); render();
@@ -2819,7 +2822,7 @@ function makePdf(){
         const pfR=pk==="pf1st"?1:2, pmR=pk==="pf1st"?2:1; const nm=person[pk].name||slab;
         const _nr=1+order.length; const _bh=22+_nr*15+10+_nr*15+16; if(y+_bh > doc.internal.pageSize.getHeight()-34){ doc.addPage(); y=M; }
         doc.setFontSize(10); doc.setFont(undefined,"bold");
-        doc.text(ex+" \u00b7 "+slab+" \u2014 "+nm+"  \u00b7  Emp "+(person[pk].emp||"\u2014")+" ("+duty[pk]+")    PF: "+seatFull(pfR,pk)+"  /  PM: "+seatFull(pmR,pk)+"    "+normAttempt(take[pk]), M, y+10); y+=15;
+        doc.text(ex+" \u00b7 "+slab+" \u2014 "+nm+"  \u00b7  Emp "+(person[pk].emp||"\u2014")+" ("+duty[pk]+")    PF: "+seatFull(pfR,pk)+"  /  PM: "+seatFull(pmR,pk)+"    "+normAttempt(take[pk])+"    Knowledge Validation: "+kvLabel((crewSession[pk]||{}).kv), M, y+10); y+=15;
         const pfBody=order.map(c=>{ const ev=evByCode(events,c); return [ev.code+" "+ev.nm, prCell(ex,pfR,ev,"H").t, prCell(ex,pfR,ev,"SOP").t, prCell(ex,pfR,ev,"A").t, prCell(ex,pfR,ev,"CRM").t]; });
         doc.autoTable({ head:[["PF \u00b7 Run "+pfR,"H","SOP","A","CRM"]], body:pfBody, startY:y, margin:{left:M,right:M},
           styles:{fontSize:7,halign:"center",valign:"middle",cellPadding:2,lineColor:[70,70,70], lineWidth:1, fontStyle:"bold"},
@@ -3403,5 +3406,33 @@ document.addEventListener("click",function(e){
 }, true);
 </script>
 <style>/* crew rows: Swap sits in its own column and the rows wrap instead of running under it */.crewwrap{display:grid !important;grid-template-columns:minmax(0,1fr) auto;column-gap:10px;align-items:center;padding-right:0 !important}.crewwrap>.meta{grid-column:1;flex-wrap:wrap !important;overflow:visible !important;row-gap:6px;margin:4px 0 !important}.crewwrap>.swapbtn{position:static !important;grid-column:2;grid-row:1 / span 2;align-self:center;white-space:nowrap}.crewwrap .meta select.dutysel[data-person]:not([data-cs]){width:78px !important;min-width:0 !important}.crewwrap .meta select.dutysel[data-take]{width:132px !important;min-width:0 !important}.crewwrap .meta input[data-field="name"]{width:115px !important}.crewwrap .meta input[data-field="emp"]{width:70px !important}</style>
+<style>.dutysel.kvsel{width:74px !important;min-width:0 !important}.dutysel.kvsel.sat{background:#e6f6ec;border-color:#9dd3b0;color:#14713c;font-weight:800}.dutysel.kvsel.unsat{background:#fdecea;border-color:#f1a9a0;color:#a3271b;font-weight:800}</style>
+<script>
+/* CQMT2.1 Knowledge Validation (KV) status — AIMS shows a KV status field at the top of the Assessment PF page (I/E AQP Manual pp. 16-17) */
+function kvLabel(v){ return v==="Sat"?"Satisfactory":v==="Unsat"?"Unsatisfactory":"Not entered"; }
+document.addEventListener("click",function(e){
+  var b=e.target.closest("[data-kvinfo]"); if(!b) return; e.preventDefault(); e.stopPropagation();
+  var m=document.createElement("div"); m.className="mo-msg";
+  m.innerHTML="<b>KV = Knowledge Validation</b> — Preflight Pictorial Visual Inspection (12.8) and Airplane Systems and Limitations (13.0), given by an SCP or IEQ before the CQMT2.1 briefing.<br><br>"+
+   "<b>Sat</b> — 80% or better, corrected to 100% (missed items reviewed with the pilot).<br><b>Unsat</b> — below 80%: retrain and retest. A subsequent failure goes to the Director of Training; UNSAT on the 2nd attempt enters Special Tracking (additional KV in the 3rd or 4th month).<br><br>"+
+   "The KV must be completed before the simulator session. The result goes on the AIMS page (KV status), the PDF and the training record.<br><br><small>AQPM V5 §4.3 (KV Description, Performance Criteria, Table 4.3.2, Remediation of KV), Table 4.4.1; I/E AQP Manual pp. 16-17.</small>";
+  showModal("KV — Knowledge Validation", m, [{label:"OK",kind:"primary",onClick:closeModal}]);
+}, true);
+window.KV_UNSAT_NOTE=function(){ try{ toast("KV Unsat: retrain and retest (below 80%). Record Sat once the retest is passed."); }catch(e){} };
+/* Before the sim session starts: check every graded pilot has a Satisfactory KV */
+document.addEventListener("click",function(e){
+  var b=e.target.closest('[data-act="start"]'); if(!b) return;
+  if(window.__kvStartOK){ window.__kvStartOK=false; return; }
+  var miss=["pf1st","pf2nd"].filter(function(pk){ return duty[pk]!=="Seat Support" && (person[pk].name||"").trim() && crewSession[pk].kv!=="Sat"; });
+  if(!miss.length) return;
+  e.preventDefault(); e.stopPropagation();
+  var m=document.createElement("div"); m.className="mo-msg";
+  m.innerHTML="The KV is not recorded as <b>Satisfactory</b> for: <b>"+miss.map(function(pk){ return esc(person[pk].name)+" ("+kvLabel(crewSession[pk].kv)+")"; }).join(", ")+"</b>.<br><br>The KV must be completed before the simulator session (AQPM; I/E AQP Manual p. 17).";
+  showModal("Knowledge Validation", m, [
+    {label:"Start anyway", onClick:function(){ closeModal(); window.__kvStartOK=true; b.click(); }},
+    {label:"Go back", kind:"primary", onClick:closeModal}
+  ]);
+}, true);
+</script>
 </body>
 </html>
