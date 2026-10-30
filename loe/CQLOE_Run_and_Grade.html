@@ -1265,8 +1265,8 @@ const SCEN = {
    ===================================================================== */
 const GRADES = ["5","4","3","2","2-RP","2-RF","1","1-RP","1-RF","N/A"];
 const BELOW = new Set(["3","2","2-RP","2-RF","1","1-RP","1-RF"]);
-const VERSION = "2026.10.26.1";
-const VERSION_DATE = "2026-10-26";
+const VERSION = "2026.10.30.1";
+const VERSION_DATE = "2026-10-30";
 const DIMS = [["H","Handling"],["SOP","SOP"],["A","Automation"],["CRM","CRM"]];
 const DIMNM = {H:"Handling",SOP:"SOP",A:"Automation",CRM:"CRM"};
 const CMS = ["cm1","cm2"];
@@ -1507,8 +1507,8 @@ function buildSheet(){
   return wrap;
 }
 function samePairing(){ return !isSS("cm1") && !isSS("cm2") && duty.cm1===duty.cm2; }
-const PAIR_REF="AQPM Version 4 (06 JUL 26) §1.4 Crew Scheduling and Pairing Policy — Definitions note, Table 1.4.1 Crew Pairing Summary Table and Line Operational Evaluation (LOE) / Table 1.4.3 LOE Seat Substitution Table (pp. 1.4.1–1.4.3); I/E AQP Manual, Crew Scheduling and Pairing Policy — Line Operational Evaluation (LOE), pp. 49–50";
-const ST_REF="AQPM Version 4 §1.4 Special Tracking Considerations (p. 1.4.4); I/E AQP Manual p. 50";
+const PAIR_REF="AQPM Version 5 (03 AUG 26) §1.4 Crew Scheduling and Pairing Policy — Definitions note, Table 1.4.1 Crew Pairing Summary Table and Line Operational Evaluation (LOE) / Table 1.4.3 LOE Seat Substitution Table (pp. 1.4.1–1.4.3); I/E AQP Manual, Crew Scheduling and Pairing Policy — Line Operational Evaluation (LOE), pp. 49–50";
+const ST_REF="AQPM Version 5 §1.4 Special Tracking Considerations (p. 1.4.4); I/E AQP Manual p. 50";
 function bothST(){ return !isSS("cm1") && !isSS("cm2") && crewSession.cm1.spec==="Yes" && crewSession.cm2.spec==="Yes"; }
 function pairingNotice(){
   const w=document.createElement("div"); w.className="mo-msg";
@@ -2234,6 +2234,7 @@ function swapCrew(){
 }
 function checkUpdates(){ try{ if(window.top && window.top!==window){ window.top.location.reload(); return; } }catch(e){} try{ location.replace(location.pathname+"?v="+Date.now()); }catch(e){ location.reload(); } }
 const CHANGELOG=[
+ {v:"2026.10.30.1",date:"2026-10-30",notes:["References updated to AQPM Version 5 (03 AUG 26) in the pairing and Special Tracking notices (same sections and pages as Version 4)."]},
  {v:"2026.10.26.1",date:"2026-10-26",notes:["Works without internet: the first time you open this app with internet it saves a copy on the iPad, so it still opens and grades with no Wi-Fi (sim building outage, in flight). With internet it always loads the newest version first, exactly as before; if the connection is slow it opens the saved copy and offers ‘Update now’ when the newer version finishes downloading. An ‘Offline’ tag shows at the bottom-left when there is no internet. Briefing slides still need internet."]},
  {v:"2026.10.25.1",date:"2026-10-25",notes:["Crew rows: shorter Duty box; the Swap button now sits in its own column beside the two pilot rows, and a row wraps to a second line on a narrower iPad screen instead of running under the Swap button."]},
  {v:"2026.10.25",date:"2026-10-25",notes:["Crew rows tidied: “Special Tracking” is now labeled ST (the AIMS abbreviation) with an ⓘ button that explains it."]},
