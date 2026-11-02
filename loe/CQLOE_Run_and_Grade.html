@@ -1265,8 +1265,8 @@ const SCEN = {
    ===================================================================== */
 const GRADES = ["5","4","3","2","2-RP","2-RF","1","1-RP","1-RF","N/A"];
 const BELOW = new Set(["3","2","2-RP","2-RF","1","1-RP","1-RF"]);
-const VERSION = "2026.10.30.1";
-const VERSION_DATE = "2026-10-30";
+const VERSION = "2026.11.02.1";
+const VERSION_DATE = "2026-11-02";
 const DIMS = [["H","Handling"],["SOP","SOP"],["A","Automation"],["CRM","CRM"]];
 const DIMNM = {H:"Handling",SOP:"SOP",A:"Automation",CRM:"CRM"};
 const CMS = ["cm1","cm2"];
@@ -1815,6 +1815,7 @@ function renderSES(wrap){
 
 /* ---- lesson-guide viewer: the FAA-approved guide pages themselves (verbatim), pinch/zoom, page by page ---- */
 let cvState=null;
+const LG_HIRES="https://rsg747.github.io/aqp-mt-test/loe/pages/";
 function cvKey(e){ if(e.key==="Escape") closeGuide(); else if(e.key==="ArrowRight") cvState&&cvState.step(1); else if(e.key==="ArrowLeft") cvState&&cvState.step(-1); }
 function closeGuide(){ if(!cvState) return; window.removeEventListener("resize", cvState.onResize); cvState.overlay.remove(); cvState=null; document.removeEventListener("keydown", cvKey); }
 function guidePages(){ const pg=S().pages; const arr=[pg.map, pg.setup]; PHASES.forEach(p=>pg[p.n].forEach(x=>arr.push(x))); return arr; }
@@ -1835,7 +1836,7 @@ function openGuide(page){
       <button type="button" class="cv-btn" data-a="out">−</button><button type="button" class="cv-btn" data-a="in">+</button><button type="button" class="cv-btn" data-a="reset">Fit</button>
     </div>
     <div class="cv-jump"></div>
-    <div class="cv-stage"><img class="cv-img" alt="Lesson guide page"><div class="cv-hint">CQLOE.1 [${SC}] lesson guide (FAA-approved, shown as published) · pinch or scroll to zoom · drag to pan · double-tap to fit</div></div>
+    <div class="cv-stage"><img class="cv-img" alt="Lesson guide page"><div class="cv-hint">CQLOE.1 [${SC}] lesson guide (FAA-approved, shown as published) · swipe for the next / previous page · pinch or scroll to zoom · drag to pan · double-tap to fit</div></div>
     <button type="button" class="cv-fclose" data-a="close">✕ Close lesson guide</button>`;
   document.body.appendChild(overlay);
   const stage=overlay.querySelector(".cv-stage"), img=overlay.querySelector(".cv-img"), ttl=overlay.querySelector(".cv-title");
@@ -1844,23 +1845,33 @@ function openGuide(page){
   let scale=1,tx=0,ty=0,fit=1;
   const apply=()=>{ img.style.transform=`translate(${tx}px,${ty}px) scale(${scale})`; };
   const fitImg=()=>{ const nw=img.naturalWidth, nh=img.naturalHeight; if(!nw||!nh) return; const sw=stage.clientWidth, sh=stage.clientHeight; fit=Math.min(sw/nw, sh/nh); scale=fit; tx=(sw-nw*scale)/2; ty=Math.max(0,(sh-nh*scale)/2); apply(); };
-  const zoomAt=(cx,cy,f)=>{ const ns=Math.min(fit*8, Math.max(fit*0.7, scale*f)); tx=cx-(cx-tx)*(ns/scale); ty=cy-(cy-ty)*(ns/scale); scale=ns; apply(); };
-  const show=()=>{ const n=list[at]; img.src=(PAGES[SC]||{})[n]||""; ttl.textContent=S().label+" · "+pageLabel(n);
+  const zoomAt=(cx,cy,f)=>{ const ns=Math.min(fit*10, Math.max(fit*0.7, scale*f)); tx=cx-(cx-tx)*(ns/scale); ty=cy-(cy-ty)*(ns/scale); scale=ns; apply(); };
+  let hiTok=0;
+  const loadHi=(n)=>{ const tok=++hiTok, sc=SC, hi=new Image(); hi.onload=()=>{ if(tok!==hiTok || !hi.naturalWidth) return;
+      if(!lowLoaded){ hiPending=true; img.src=hi.src; return; }
+      const ow=img.naturalWidth||hi.naturalWidth, k=ow/hi.naturalWidth; swapping=true; scale*=k; fit*=k; img.src=hi.src; apply(); };
+    hi.src=LG_HIRES+sc+String(n).padStart(2,"0")+".webp"; };
+  let swapping=false, lowLoaded=false, hiPending=false;
+  const show=()=>{ const n=list[at]; swapping=false; lowLoaded=false; hiPending=false; img.src=(PAGES[SC]||{})[n]||""; loadHi(n); ttl.textContent=S().label+" · "+pageLabel(n);
     overlay.querySelector('[data-a="prev"]').disabled=at<=0; overlay.querySelector('[data-a="next"]').disabled=at>=list.length-1;
     const ph=PHASES.find(p=>S().pages[p.n].indexOf(n)>=0);
     jump.querySelectorAll("[data-j]").forEach(b=>{ const j=+b.dataset.j; b.classList.toggle("on", j===n || (ph && S().pages[ph.n][0]===j)); });
     if(ph) markPhase(ph.n);
     if(img.complete && img.naturalWidth) fitImg(); };
-  img.addEventListener("load", fitImg);
+  img.addEventListener("load", ()=>{ if(swapping){ swapping=false; return; } if(lowLoaded && !hiPending) return; fitImg(); lowLoaded=true; });
   const step=(d)=>{ const nn=at+d; if(nn<0||nn>=list.length) return; at=nn; show(); };
   jump.querySelectorAll("[data-j]").forEach(b=>b.addEventListener("click",(e)=>{ e.stopPropagation(); at=Math.max(0,list.indexOf(+b.dataset.j)); show(); }));
   stage.addEventListener("wheel",(e)=>{ e.preventDefault(); const r=stage.getBoundingClientRect(); zoomAt(e.clientX-r.left,e.clientY-r.top,e.deltaY<0?1.15:1/1.15); },{passive:false});
-  const pts=new Map(); let drag=false,lx=0,ly=0,pp=0;
-  stage.addEventListener("pointerdown",(e)=>{ try{stage.setPointerCapture(e.pointerId);}catch(_){} pts.set(e.pointerId,{x:e.clientX,y:e.clientY}); if(pts.size===1){drag=true;lx=e.clientX;ly=e.clientY;} });
+  const pts=new Map(); let drag=false,lx=0,ly=0,pp=0,sx=0,sy=0,st=0,multi=false;
+  stage.addEventListener("pointerdown",(e)=>{ try{stage.setPointerCapture(e.pointerId);}catch(_){} pts.set(e.pointerId,{x:e.clientX,y:e.clientY}); if(pts.size===1){drag=true;lx=sx=e.clientX;ly=sy=e.clientY;st=Date.now();multi=false;} else multi=true; });
   stage.addEventListener("pointermove",(e)=>{ if(!pts.has(e.pointerId)) return; pts.set(e.pointerId,{x:e.clientX,y:e.clientY});
     if(pts.size>=2){ const a=[...pts.values()]; const d=Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y); if(pp){ const r=stage.getBoundingClientRect(); zoomAt((a[0].x+a[1].x)/2-r.left,(a[0].y+a[1].y)/2-r.top,d/pp); } pp=d; drag=false; }
     else if(drag){ tx+=e.clientX-lx; ty+=e.clientY-ly; lx=e.clientX; ly=e.clientY; apply(); } });
-  const up=(e)=>{ pts.delete(e.pointerId); if(pts.size<2) pp=0; if(!pts.size) drag=false; };
+  /* swipe left/right to change page when the page is not zoomed in (zoomed: drag pans as before) */
+  const up=(e)=>{ const was=pts.size===1 && drag && !multi; pts.delete(e.pointerId); if(pts.size<2) pp=0; if(!pts.size) drag=false;
+    if(was && scale<=fit*1.05){ const dx=e.clientX-sx, dy=e.clientY-sy;
+      if(Math.abs(dx)>60 && Math.abs(dx)>Math.abs(dy)*1.3 && Date.now()-st<900){ const d=dx<0?1:-1; if((d>0&&at<list.length-1)||(d<0&&at>0)){ step(d); return; } }
+      if(Math.abs(dx)>4||Math.abs(dy)>4) fitImg(); } };
   stage.addEventListener("pointerup",up); stage.addEventListener("pointercancel",up); stage.addEventListener("dblclick",fitImg);
   overlay.querySelectorAll("[data-a]").forEach(b=>{ b.addEventListener("pointerdown",e=>e.stopPropagation()); b.addEventListener("click",(e)=>{ e.stopPropagation(); const a=b.dataset.a, r=stage.getBoundingClientRect();
     if(a==="in") zoomAt(r.width/2,r.height/2,1.3); else if(a==="out") zoomAt(r.width/2,r.height/2,1/1.3); else if(a==="reset") fitImg(); else if(a==="prev") step(-1); else if(a==="next") step(1); else closeGuide(); }); });
@@ -2234,6 +2245,7 @@ function swapCrew(){
 }
 function checkUpdates(){ try{ if(window.top && window.top!==window){ window.top.location.reload(); return; } }catch(e){} try{ location.replace(location.pathname+"?v="+Date.now()); }catch(e){ location.reload(); } }
 const CHANGELOG=[
+ {v:"2026.11.02.1",date:"2026-11-02",notes:["Lesson guide: swipe left or right to go to the next or previous page; pages now load in full resolution (300 dpi from the published lesson guide), so text and diagrams stay sharp when you zoom in. With no internet the standard pages still show."]},
  {v:"2026.10.30.1",date:"2026-10-30",notes:["References updated to AQPM Version 5 (03 AUG 26) in the pairing and Special Tracking notices (same sections and pages as Version 4)."]},
  {v:"2026.10.26.1",date:"2026-10-26",notes:["Works without internet: the first time you open this app with internet it saves a copy on the iPad, so it still opens and grades with no Wi-Fi (sim building outage, in flight). With internet it always loads the newest version first, exactly as before; if the connection is slow it opens the saved copy and offers ‘Update now’ when the newer version finishes downloading. An ‘Offline’ tag shows at the bottom-left when there is no internet. Briefing slides still need internet."]},
  {v:"2026.10.25.1",date:"2026-10-25",notes:["Crew rows: shorter Duty box; the Swap button now sits in its own column beside the two pilot rows, and a row wraps to a second line on a narrower iPad screen instead of running under the Swap button."]},
@@ -2265,7 +2277,7 @@ const HELP = {title:"How to Use the CQLOE.1 LOE Run-and-Grade", subtitle:"Instru
  {id:"paper", title:"Printing the crew paperwork", steps:["Tap 🖨 Crew paperwork in the toolbar. It always prints the paperwork for the LOE tab you are on (A, B or C).","Pick the engine type of the simulator — GE (CF6-80C2) or PW (PW4056). The lesson guide has a flight plan, TLR and loadsheet for each; your pick is remembered.","Tap Complete crew package for everything the crew needs, or print one document (flight plan, TLR, loadsheet, or NOTAMs / weather / clearance).","On the iPad the share sheet opens — tap Print. Pages are the lesson guide's own pages, unchanged."]},
  {id:"timer", title:"LOE timer", intro:"Start / Pause / Reset time the LOE. The planned time is 4.0 hours; the clock turns red after 4:00:00. Each scenario keeps its own timer."},
  {id:"aims", title:"AIMS entry view", intro:"The AIMS tab shows each crewmember in grade-sheet order: for each phase the duty position, the four ratings and the final grade, then the SES Observable Pilot Actions to circle, then comments. It is read-only — change grades on the LOE tab."},
- {id:"guide", title:"Lesson guide pages", intro:"Tap a profile point or a phase column header to open the lesson guide at that phase. The pages are the FAA-approved CQLOE.1 lesson guide exactly as published — nothing re-typed. Use ‹ Prev / Next › or the phase buttons to move through the guide; pinch or scroll to zoom, drag to pan, double-tap to fit."}
+ {id:"guide", title:"Lesson guide pages", intro:"Tap a profile point or a phase column header to open the lesson guide at that phase. The pages are the FAA-approved CQLOE.1 lesson guide exactly as published — nothing re-typed. Swipe left or right (or use ‹ Prev / Next › or the phase buttons) to move through the guide; pinch or scroll to zoom, drag to pan, double-tap to fit. Pages load in full resolution so text stays sharp when you zoom."}
 ]};
 let helpOpen=null;
 function helpKey(e){ if(e.key==="Escape") closeHelp(); }
@@ -2401,7 +2413,7 @@ document.querySelectorAll(".xtab").forEach(t=>t.addEventListener("click",()=>{ V
       var g=e.target.closest("[data-go]"); if(g){ closeMenu(); present(g.dataset.go, g.dataset.at===""?null:+g.dataset.at); } });
     cfg.forEach(function(d){ if(d.soon) return;
       load(d.id).then(function(m){ var row=ov.querySelector('[data-deck="'+d.id+'"] [data-secs]'); if(!row) return;
-        row.innerHTML='<button type="button" class="go" data-go="'+h(d.id)+'" data-at="">▶ Present</button>'+(m.sections||[]).map(function(s){ return '<button type="button" data-go="'+h(d.id)+'" data-at="'+s[1]+'">'+h(s[0])+'</button>'; }).join("");
+        row.innerHTML='<button type="button" class="go" data-go="'+h(d.id)+'" data-at="">▶ Present</button>'+(d.nosecs?'<span class="bp-ds" style="margin:8px 0 0 4px">sections are under “Jump to…” while presenting</span>':'')+(d.nosecs?[]:(m.sections||[])).map(function(s){ return '<button type="button" data-go="'+h(d.id)+'" data-at="'+s[1]+'">'+h(s[0])+'</button>'; }).join("");
         var ds=ov.querySelector('[data-deck="'+d.id+'"] .bp-ds'); if(ds && !d.sub) ds.textContent=m.slides.length+" slides · "+(m.date?("deck dated "+m.date):"");
       }).catch(function(){ var row=ov.querySelector('[data-deck="'+d.id+'"] [data-secs]'); if(row) row.innerHTML='<span class="bp-ds" style="color:#a3271b">Slides could not load — check Wi-Fi.</span>'; });
     });
@@ -2428,7 +2440,7 @@ document.querySelectorAll(".xtab").forEach(t=>t.addEventListener("click",()=>{ V
       (s.fac?'<div class="bp-tag">Instructor slide</div>':'')+
       (P.notes&&P.m.slides[show].n?'<div class="bp-notes"><b>INSTRUCTOR NOTES — also showing on the TV</b>'+h(P.m.slides[show].n)+'</div>':'')+
       '<div class="bp-bar" id="bpBar"><button type="button" data-bp="prev" '+(P.pos===0?"disabled":"")+'>‹</button><span class="ct">'+(P.pos+1)+' / '+P.list.length+'</span>'+
-      (a>=0?'<button type="button" class="'+(P.rev?"":"rev")+'" data-bp="rev">'+(P.rev?"Hide finding":"Reveal finding")+'</button>':'')+
+      (a>=0?'<button type="button" class="'+(P.rev?"":"rev")+'" data-bp="rev">'+(P.rev?("Hide"+(P.m.rev?"":" finding")):(P.m.rev||"Reveal finding"))+'</button>':'')+
       '<button type="button" data-bp="next" '+(P.pos>=P.list.length-1?"disabled":"")+'>›</button>'+
       (secs.length?'<select data-bp="sec" aria-label="Jump to section"><option value="">Jump to…</option>'+secs.map(function(x){ return '<option value="'+x[1]+'">'+h(x[0])+'</option>'; }).join("")+'</select>':'')+
       '<button type="button" class="'+(P.notes?"on":"")+'" data-bp="notes" title="Instructor notes — anything on the iPad also shows on the TV">Notes</button>'+

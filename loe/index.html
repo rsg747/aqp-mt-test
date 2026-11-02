@@ -33,7 +33,7 @@ f.src = TOOL + (TOOL.indexOf("?")<0?"?":"&") + "v=" + Date.now();
 /* Offline support: keeps a copy of this app on the iPad so it opens with no internet.
  * With internet it always loads the newest version first. Add ?nosw=1 to the address to turn it off on a device. */
 (function(){
-  var SW_URL="../sw.js", WARM=["index.html", "./", "CQLOE_Run_and_Grade.html", "icon.png"], OPT=[], ID="TG_LOE";
+  var SW_URL="../sw.js", WARM=["index.html", "./", "CQLOE_Run_and_Grade.html", "icon.png"], OPT=["pages/A09.webp", "pages/A10.webp", "pages/A11.webp", "pages/A12.webp", "pages/A13.webp", "pages/A14.webp", "pages/A15.webp", "pages/A16.webp", "pages/A17.webp", "pages/A18.webp", "pages/A19.webp", "pages/B09.webp", "pages/B10.webp", "pages/B11.webp", "pages/B12.webp", "pages/B13.webp", "pages/B14.webp", "pages/B15.webp", "pages/B16.webp", "pages/B17.webp", "pages/B18.webp", "pages/B19.webp", "pages/B20.webp", "pages/B21.webp", "pages/C09.webp", "pages/C10.webp", "pages/C11.webp", "pages/C12.webp", "pages/C13.webp", "pages/C14.webp", "pages/C15.webp", "pages/C16.webp", "pages/C17.webp", "pages/C18.webp", "pages/C19.webp", "pages/C20.webp", "pages/C21.webp", "pages/C22.webp", "pages/C23.webp"], ID="TG_LOE";
   if(!("serviceWorker" in navigator) || !window.caches) return;
   function el(id){ return document.getElementById(id); }
   function pill(){ var p=el("aqpOffPill"); if(!p){ p=document.createElement("div"); p.id="aqpOffPill"; p.textContent="Offline · using the copy saved on this iPad"; document.body.appendChild(p); } p.style.display = navigator.onLine===false ? "block" : "none"; }
