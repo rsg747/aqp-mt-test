@@ -1265,7 +1265,7 @@ const SCEN = {
    ===================================================================== */
 const GRADES = ["5","4","3","2","2-RP","2-RF","1","1-RP","1-RF","N/A"];
 const BELOW = new Set(["3","2","2-RP","2-RF","1","1-RP","1-RF"]);
-const VERSION = "2026.11.02.2";
+const VERSION = "2026.11.02.3";
 const VERSION_DATE = "2026-11-02";
 const DIMS = [["H","Handling"],["SOP","SOP"],["A","Automation"],["CRM","CRM"]];
 const DIMNM = {H:"Handling",SOP:"SOP",A:"Automation",CRM:"CRM"};
@@ -1380,7 +1380,7 @@ function overall(cm){
     else if(f==="INCOMPLETE"){ inc=true; reasons.push(p.code+" "+p.nm+" INCOMPLETE"); }
     else if(f==="SAT W/ REPEAT") rep=true; });
   const us=unsuccessfulSets(cm); const o25=us.length>evSetLimit();
-  if(o25){ un=true; reasons.unshift("More than 25% of event sets unsuccessful ("+us.length+" of "+PHASES.length+": "+us.map(p=>p.code).join(", ")+") — LOE failed, no repeats (AQPM 4.3)"); }
+  if(o25){ un=true; reasons.unshift("3rd unsatisfactory phase ("+us.length+" of "+PHASES.length+": "+us.map(p=>p.code).join(", ")+") — over 25% of event sets, LOE Unsatisfactory, no repeats (AQPM 4.3)"); }
   let label, cls;
   if(r==="sim"||r==="illness"){ label="Incomplete"; cls="fail"; }
   else if(un){ label="Unsatisfactory"; cls="fail"; }
@@ -2253,7 +2253,8 @@ function swapCrew(){
 }
 function checkUpdates(){ try{ if(window.top && window.top!==window){ window.top.location.reload(); return; } }catch(e){} try{ location.replace(location.pathname+"?v="+Date.now()); }catch(e){ location.reload(); } }
 const CHANGELOG=[
- {v:"2026.11.02.2",date:"2026-11-02",notes:["LOE 25% rule: the app now warns when a crewmember reaches the limit (2 of 8 event sets unsuccessful — one more fails the LOE) and alerts when it is exceeded (3 or more: the LOE is failed, no repeats; remedial training and an alternate LOE). The LOE result then shows Unsatisfactory with the reason. Unsuccessful = phase result UNSAT or SAT W/ REPEAT (AQPM 4.3)."]},
+ {v:"2026.11.02.3",date:"2026-11-02",notes:["LOE 25% rule simplified: no pop-up at 2 unsatisfactory phases — the only alert is at the 3rd, telling you to stop the simulator (LOE Unsatisfactory)."]},
+ {v:"2026.11.02.2",date:"2026-11-02",notes:["LOE 25% rule: run all 8 phases; with 2 or fewer unsatisfactory phases they are repeated at the end. When a 3rd phase is unsatisfactory for a crewmember, the app tells you to stop the simulator — the LOE is Unsatisfactory (no repeats; remedial training and an alternate LOE). The LOE result then shows Unsatisfactory with the reason (AQPM 4.3)."]},
  {v:"2026.11.02.1",date:"2026-11-02",notes:["Lesson guide: swipe left or right to go to the next or previous page; pages now load in full resolution (300 dpi from the published lesson guide), so text and diagrams stay sharp when you zoom in. With no internet the standard pages still show."]},
  {v:"2026.10.30.1",date:"2026-10-30",notes:["References updated to AQPM Version 5 (03 AUG 26) in the pairing and Special Tracking notices (same sections and pages as Version 4)."]},
  {v:"2026.10.26.1",date:"2026-10-26",notes:["Works without internet: the first time you open this app with internet it saves a copy on the iPad, so it still opens and grades with no Wi-Fi (sim building outage, in flight). With internet it always loads the newest version first, exactly as before; if the connection is slow it opens the saved copy and offers ‘Update now’ when the newer version finishes downloading. An ‘Offline’ tag shows at the bottom-left when there is no internet. Briefing slides still need internet."]},
@@ -2346,15 +2347,10 @@ function check25(){
     const list=us.map(p=>esc(p.code+" "+p.nm)+" — "+esc(phaseFinal(p.n,cm))).join("<br>");
     const m=document.createElement("div"); m.className="mo-msg";
     if(lvl===2){
-      m.innerHTML="<b>"+esc(nm(cm))+"</b>: <b>"+n+" of "+PHASES.length+"</b> event sets are unsuccessful — more than 25%.<br><br>"+list+
-        "<br><br><b>The LOE is failed.</b> Event sets may not be repeated once more than 25% are unsuccessful. Remedial training and an alternate LOE (a different scenario) are required before release to line operations. The LOE result is now Unsatisfactory."+
-        "<br><br><small>AQPM V5 §4.3 — LOE Performance Criteria; Remediation Methodology for a Failed LOE. I/E AQP Manual — Remediation Methodology for a Failed LOE.</small>";
-      showModal("LOE failed — over 25% of event sets", m, [{label:"OK", kind:"primary", onClick:closeModal}]);
-    } else {
-      m.innerHTML="<b>"+esc(nm(cm))+"</b>: <b>"+n+" of "+PHASES.length+"</b> event sets are unsuccessful — that is the 25% limit.<br><br>"+list+
-        "<br><br>These may be repeated once at the end of the session if time permits (no training, practice or coaching during a repeat). <b>One more unsuccessful event set fails the LOE</b>, and an unsuccessful repeat also fails it."+
-        "<br><br><small>AQPM V5 §4.3 — LOE Performance Criteria; Event Set Remediation.</small>";
-      showModal("At the 25% event-set limit", m, [{label:"OK", kind:"primary", onClick:closeModal}]);
+      m.innerHTML="<b>"+esc(nm(cm))+"</b>: <b>"+n+" of "+PHASES.length+"</b> phases are unsatisfactory — more than 25% of the event sets.<br><br>"+list+
+        "<br><br><b>Stop the simulator — the LOE is Unsatisfactory.</b> No repeats are allowed once a 3rd phase is unsatisfactory. Remedial training and an alternate LOE (a different scenario) are required before release to line operations."+
+        "<br><br><small>With 2 or fewer unsatisfactory phases, run all 8 phases and repeat those at the end (once each, no coaching). AQPM V5 §4.3 — LOE Performance Criteria; Remediation Methodology for a Failed LOE.</small>";
+      showModal("Stop the LOE — 3rd unsatisfactory phase", m, [{label:"OK", kind:"primary", onClick:closeModal}]);
     }
   });
 }
