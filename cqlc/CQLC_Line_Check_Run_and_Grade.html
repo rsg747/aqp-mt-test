@@ -497,8 +497,9 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var n,r,i,a,
 
 <script>
 "use strict";
-const VERSION="2026.10.26.1", VERSION_DATE="2026-10-26";
+const VERSION="2026.10.30.1", VERSION_DATE="2026-10-30";
 const CHANGELOG=[
+ {v:"2026.10.30.1",date:"2026-10-30",notes:["Updated to the 2026-10-25 CQLC paper grader: new ‘Course Evaluation’ briefing item (Training Course Evaluation survey by QR code, category Line Check); an Incomplete line check is now rescheduled per AQPM 4.3.7; the footer now reads ‘AQPM 4.3, Atlas Air FOM, and the I/E AQP Manual, or FOTM as applicable’."]},
  {v:"2026.10.26.1",date:"2026-10-26",notes:["Works without internet: the first time you open this app with internet it saves a copy on the iPad, so it still opens and grades with no Wi-Fi (sim building outage, in flight). With internet it always loads the newest version first, exactly as before; if the connection is slow it opens the saved copy and offers ‘Update now’ when the newer version finishes downloading. An ‘Offline’ tag shows at the bottom-left when there is no internet. Briefing slides still need internet."]},
  {v:"2026.10.13",date:"2026-10-14",notes:["Saved sessions can now be deleted (Delete on each session, plus Delete all). PDF header re-laid out so the title, logo and flight details no longer overlap."]},
  {v:"2026.10.12",date:"2026-10-05",notes:["Grade 2 debrief remediation (AQPM 4.3.9): ticking it pre-fills the Phase/TPO with the task(s) graded 2; the overall grade becomes Satisfactory (no email required) once the Phase/TPO and justification are documented. It shows on the Results and AIMS tabs and prints on the PDF.","Email notification button: when a crewmember is Unsatisfactory or Incomplete it turns red (⚠ Email required) and builds a ready-to-copy email (subject + body) for Training Records, the 747 Fleet Captain and Training Scheduling, with the items graded 2 or 1, comments, and the AQPM 4.3.9 / 4.3.14 or 4.3.4 action.","ACM 1 / ACM 2 are not graded — documents (certificate & publications) check only, seat Jumpseat / rest. They no longer appear on the Grade, Results or AIMS tabs; their audit prints on the briefing page of the PDF.","Takeoff and landing credit goes to the PF only.","New app: CQLC Pilot Line Check (grade sheet 2026-08-26). Briefing checklist with read-aloud scripts, flight and crew (2–4 crewmembers, one AIMS form each), phase grading with conditions, PF/PM per task that follows the flight, results with the AQPM 4.3.9 rules, AIMS entry view per crewmember, and PDF."]}
@@ -529,7 +530,7 @@ const BRIEF=[
   ["auth","Authorization (6.4.1.1)","\u201cI am authorized to conduct this Line Check in accordance with Atlas Air and FAA policy.\u201d"],
   ["desig","LC Designation","\u201cThis Line Check is designated as: {LCTYPE}\u201d"],
   ["expect","Crew Expectations","\u201cThis will be conducted as a normal line flight. There are no planned failures, no traps, and no scripted scenarios. Operate the aircraft exactly as you would on any normal trip.\u201d"],
-  ["sector","Sector Requirements (6.4.1.3)","\u201cThis Line Check requires at least one takeoff and one landing accomplished by the evaluated crewmembers, along with all associated phases of flight. If the minimum completion criteria are not met (e.g., block turn back, mechanical cancellation), the LC will be marked Incomplete and rescheduled per AQPM 4.3.4.\u201d"],
+  ["sector","Sector Requirements (6.4.1.3)","\u201cThis Line Check requires at least one takeoff and one landing accomplished by the evaluated crewmembers, along with all associated phases of flight. If the minimum completion criteria are not met (e.g., block turn back, mechanical cancellation), the LC will be marked Incomplete and rescheduled per AQPM 4.3.7.\u201d"],
   ["pubs","Pubs & Certs (6.4.1.1)","[ LCP ACTION ] Audit currency and completeness of all crewmember publications and required certificates. (Use the audit on the Flight & crew tab.)"],
   ["pubsproc","Pubs/Cert Procedure (6.4.1.2)","[ LCP KNOWLEDGE ] If a deficiency is identified, resolve per FOM (deferral, replacement, or grounding). Departure will not proceed until resolution is confirmed."]]},
  {sec:"PERFORMS THE LINE CHECK – BRIEF CREW ON HOW THE FLIGHT WILL BE CONDUCTED (AQP 6.4.2)",items:[
@@ -545,7 +546,8 @@ const BRIEF=[
   ["dfmt","Debrief Format (6.4.3.2)","\u201cAfter the secure checklist is completed, we will conduct a structured debrief on the flight deck. The debrief is a required part of this evaluation event. It will be conducted in a positive, professional manner.\u201d"],
   ["dcont","Debrief Content (6.4.3.3)","\u201cThe debrief will include: your self-assessment of the flight; reinforcement of effective behaviors and strengths; discussion of any safety-focused areas for improvement; and alignment with Atlas Air standards and AQP Qualification Standards.\u201d"],
   ["outc","Outcome","If Satisfactory: \u201cYour qualification remains current.\u201d  If Unsatisfactory: \u201cYou will be removed from flight duties, referred to Standards, and next steps will be clearly explained to you.\u201d"],
-  ["remp","[if required] Remediation Pathway (6.4.3.1)","\u201cYou will receive remedial training and another LC. The Director of Training and Fleet Standards Captain will determine whether remediation occurs via debrief, ground school, or simulation. A second unsatisfactory LC results in referral to the Training Review Board.\u201d"]]}
+  ["remp","[if required] Remediation Pathway (6.4.3.1)","\u201cYou will receive remedial training and another LC. The Director of Training and Fleet Standards Captain will determine whether remediation occurs via debrief, ground school, or simulation. A second unsatisfactory LC results in referral to the Training Review Board.\u201d"],
+  ["ceval","Course Evaluation","\u201cPlease complete the Training Course Evaluation survey using the QR code. Select Line Check as the category of training. Your feedback on the Line Check process is confidential and is used to improve the program.\u201d"]]}
 ];
 const MEMBERS=[{k:"pic",label:"Duty Assigned PIC"},{k:"sic",label:"Second Pilot"},{k:"acm1",label:"ACM 1"},{k:"acm2",label:"ACM 2"}];
 
@@ -641,7 +643,7 @@ function vBrief(v){
     });
     v.appendChild(c);
   });
-  v.appendChild(el(`<div class="card"><div class="row" style="gap:20px"><div class="okbox" style="flex:1"><b>SATISFACTORY</b> — Qualification current. Complete and submit AIMS form (or backup paper grader if AIMS inoperative) within 24 hrs.</div><div class="warnbox" style="flex:1"><b>UNSATISFACTORY</b> — Remove from line ops. Notify: Scheduling, Standards Captain, and Director of Training.</div></div><div class="sub">Conducted in accordance with AQPM 4.3, Atlas Air FOM, and the Line Check Airman Manual. (6.4.2.5)</div></div>`));
+  v.appendChild(el(`<div class="card"><div class="row" style="gap:20px"><div class="okbox" style="flex:1"><b>SATISFACTORY</b> — Qualification current. Complete and submit AIMS form (or backup paper grader if AIMS inoperative) within 24 hrs.</div><div class="warnbox" style="flex:1"><b>UNSATISFACTORY</b> — Remove from line ops. Notify: Scheduling, Standards Captain, and Director of Training.</div></div><div class="sub">Conducted in accordance with AQPM 4.3, Atlas Air FOM, and the I/E AQP Manual, or FOTM as applicable. (6.4.2.5)</div></div>`));
 }
 
 function vCrew(v){
@@ -768,7 +770,7 @@ function vResults(v){
     }
     const cm=card.querySelector("[data-cm]"); cm.value=r.comments||""; cm.oninput=()=>{ r.comments=cm.value; save(); };
     card.appendChild(el(ov==="Unsatisfactory" ? `<div class="warnbox">UNSATISFACTORY — Remove from line ops. Notify: Scheduling, Standards Captain, and Director of Training.</div>` :
-      ov==="Satisfactory" ? `<div class="okbox">SATISFACTORY — Qualification current. Complete and submit AIMS form within 24 hrs.</div>` : `<div class="infobox">INCOMPLETE — reschedule per AQPM 4.3.4.</div>`));
+      ov==="Satisfactory" ? `<div class="okbox">SATISFACTORY — Qualification current. Complete and submit AIMS form within 24 hrs.</div>` : `<div class="infobox">INCOMPLETE — reschedule per AQPM 4.3.7.</div>`));
     v.appendChild(card);
   });
 }
@@ -853,7 +855,7 @@ function buildEmailDrafts(){
          "The Fleet Standards Captain, in concert with the Director of Training, determines whether remediation occurs via debrief, ground school, or simulation, followed by another LC. "+
          "A second unsatisfactory LC results in referral to the Training Review Board.\n")
        : ("Reason: the minimum completion criteria were not met (at least one takeoff and one landing, with all associated phases of flight)"+(r.comments?(" — "+r.comments):"")+".\n\n"+
-         "ACTION REQUIRED: Mark the LC Incomplete and reschedule per AQPM 4.3.4.\n"))+
+         "ACTION REQUIRED: Mark the LC Incomplete and reschedule per AQPM 4.3.7.\n"))+
       "\nNotify: Scheduling, Standards Captain, and Director of Training.";
     out.push({nm,emp,label:ov,to:OFFICES.join(", "),subject,body});
   });
