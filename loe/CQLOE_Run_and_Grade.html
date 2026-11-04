@@ -665,6 +665,7 @@
   .pw-s{font-size:11.5px;color:#5b6572}
   .stlbl{gap:3px !important}.stinfo{border:1px solid #9db4d6;background:#eef3fa;color:#2b6fff;border-radius:50%;width:18px;height:18px;padding:0;font:800 11px Georgia,serif;font-style:italic;line-height:16px;cursor:pointer;margin:0 2px 0 1px;flex:none}
   .crewwrap{display:grid !important;grid-template-columns:minmax(0,1fr) auto;column-gap:10px;align-items:center;padding-right:0 !important}.crewwrap>.meta{grid-column:1;flex-wrap:wrap !important;overflow:visible !important;row-gap:6px;margin:4px 0 !important}.crewwrap>.swapbtn{position:static !important;grid-column:2;grid-row:1 / span 2;align-self:center;white-space:nowrap}.crewwrap .meta select.dutysel[data-person]{width:78px !important;min-width:0 !important}.crewwrap .meta select.dutysel[data-take]{width:132px !important;min-width:0 !important}.crewwrap .meta input[data-field="name"]{width:115px !important}.crewwrap .meta input[data-field="emp"]{width:70px !important}
+.dutysel.briefsel.yes{background:#e6f6ec;border-color:#9dd3b0;color:#14713c;font-weight:800}
 </style>
 
 </head>
@@ -1265,8 +1266,8 @@ const SCEN = {
    ===================================================================== */
 const GRADES = ["5","4","3","2","2-RP","2-RF","1","1-RP","1-RF","N/A"];
 const BELOW = new Set(["3","2","2-RP","2-RF","1","1-RP","1-RF"]);
-const VERSION = "2026.11.02.3";
-const VERSION_DATE = "2026-11-02";
+const VERSION = "2026.11.03.1";
+const VERSION_DATE = "2026-11-03";
 const DIMS = [["H","Handling"],["SOP","SOP"],["A","Automation"],["CRM","CRM"]];
 const DIMNM = {H:"Handling",SOP:"SOP",A:"Automation",CRM:"CRM"};
 const CMS = ["cm1","cm2"];
@@ -1296,7 +1297,7 @@ const duty = { cm1:"CA", cm2:"FO" };               // CA | FO | Seat Support
 let flightPF = "cm1";                              // who flies the LOE as PF (default for every phase)
 let sessionDate = ""; let dateUserSet = false;
 let instructor = {name:"", emp:""};
-let crewSession = {cm1:{to:"1",ldg:"1",spec:"No"}, cm2:{to:"0",ldg:"0",spec:"No"}};
+let crewSession = {cm1:{to:"1",ldg:"1",spec:"No",brief:"No",briefAt:""}, cm2:{to:"0",ldg:"0",spec:"No",brief:"No",briefAt:""}};
 let csAuto = true;   // T/O & Ldg follow the PF of 2.0 Takeoff / 7.0 Landing until the instructor changes them
 function syncCrewSession(){ if(!csAuto) return; CMS.forEach(cm=>{ crewSession[cm].to = (!isSS(cm)&&pfOf("2")===cm)?"1":"0"; crewSession[cm].ldg = (!isSS(cm)&&pfOf("7")===cm)?"1":"0"; }); }
 const ATTEMPT_OPTS = ["Initial Attempt","Remedial Attempt 1","Remedial Attempt 2","Remedial Attempt 3","Remedial Attempt 4","Repeat Attempt 1","Repeat Attempt 2","Repeat Attempt 3","Repeat Attempt 4"];
@@ -1444,6 +1445,7 @@ function buildSheet(){
       <label>T/O <select class="dutysel" data-cs="to" data-csp="${cm}">${[0,1,2,3,4,5].map(n=>`<option${String(n)===String(crewSession[cm].to)?" selected":""}>${n}</option>`).join("")}</select></label>
       <label>Ldg <select class="dutysel" data-cs="ldg" data-csp="${cm}">${[0,1,2,3,4,5].map(n=>`<option${String(n)===String(crewSession[cm].ldg)?" selected":""}>${n}</option>`).join("")}</select></label>
       <label class="stlbl">ST<button type="button" class="stinfo" data-stinfo aria-label="What is ST?">i</button> <select class="dutysel" data-cs="spec" data-csp="${cm}"><option${crewSession[cm].spec!=="Yes"?" selected":""}>No</option><option${crewSession[cm].spec==="Yes"?" selected":""}>Yes</option></select></label>
+      <label class="stlbl" title="Briefing completed">Briefed<button type="button" class="stinfo" data-brfinfo aria-label="Briefing completed">i</button> <select class="dutysel briefsel${crewSession[cm].brief==="Yes"?" yes":""}" data-cs="brief" data-csp="${cm}"><option${crewSession[cm].brief!=="Yes"?" selected":""}>No</option><option${crewSession[cm].brief==="Yes"?" selected":""}>Yes</option></select></label>
     </div>`;
   const sesTxt = sc.ses.map(s=>`SES ${s.n} · ${esc(s.name)} (${PHASES[+s.phase-1].code} ${esc(PHASES[+s.phase-1].nm)})`).join(" &nbsp;·&nbsp; ");
   wrap.innerHTML = `
@@ -1499,7 +1501,7 @@ function buildSheet(){
   wrap.querySelectorAll("[data-flightpf]").forEach(b=>b.addEventListener("click",()=>{ flightPF=b.dataset.flightpf; render(); }));
   wrap.querySelectorAll("[data-fstd]").forEach(sel=>sel.addEventListener("change",()=>setFstd(sel.value)));
   wrap.querySelectorAll(".meta input[data-instr]").forEach(inp=>inp.addEventListener("input",()=>{ instructor[inp.dataset.instr]=inp.value; }));
-  wrap.querySelectorAll("[data-cs]").forEach(sel=>sel.addEventListener("change",()=>{ crewSession[sel.dataset.csp][sel.dataset.cs]=sel.value; if(sel.dataset.cs!=="spec") csAuto=false; autosave(); if(sel.dataset.cs==="spec"){ render(); if(bothST()) stNotice(); } }));
+  wrap.querySelectorAll("[data-cs]").forEach(sel=>sel.addEventListener("change",()=>{ crewSession[sel.dataset.csp][sel.dataset.cs]=sel.value; if(sel.dataset.cs==="brief"){ crewSession[sel.dataset.csp].briefAt = sel.value==="Yes" ? new Date().toISOString() : ""; sel.classList.toggle("yes", sel.value==="Yes"); } if(sel.dataset.cs==="to"||sel.dataset.cs==="ldg") csAuto=false; autosave(); if(sel.dataset.cs==="spec"){ render(); if(bothST()) stNotice(); } }));
   wrap.querySelectorAll("[data-take]").forEach(ts=>ts.addEventListener("change",()=>{ take[ts.dataset.take]=ts.value; }));
   wrap.querySelectorAll(".meta input[data-field]").forEach(inp=>{
     inp.addEventListener("input",()=>{
@@ -1962,7 +1964,7 @@ function buildAIMS(){
   CMS.forEach((cm,ci)=>{
     const f=overall(cm);
     h+=`<div class="stud"><div class="bar">${esc(CMLBL[cm])} <span class="dutyro">${esc(nm(cm))}</span> Emp <span class="dutyro">${esc(person[cm].emp||"—")}</span> Duty <span class="dutyro">${esc(duty[cm])}</span>
-        <span class="dutyro">${SEAT_LABEL[seatOf(cm)]}</span><span class="fl-chip fl-${f.cls}" style="margin-left:auto">LOE: ${esc(f.label)}</span></div>
+        <span class="dutyro">${SEAT_LABEL[seatOf(cm)]}</span>${isSS(cm)?"":`Briefing completed <span class="dutyro">${esc(crewSession[cm].brief||"No")}</span>`}<span class="fl-chip fl-${f.cls}" style="margin-left:auto">LOE: ${esc(f.label)}</span></div>
         <div class="aimsblock"><h3>Assessment — by phase of flight</h3><table class="aims"><thead><tr><th>Phase</th><th>Duty (PF / PM / CA / FO)</th><th>Handling</th><th>SOP</th><th>Automation</th><th>CRM</th><th>Final Grade</th></tr></thead><tbody>`;
     PHASES.forEach(p=>{
       const fin=phaseFinal(p.n,cm);
@@ -2013,8 +2015,8 @@ function makePdf(){
       [{content:"Curriculum:",styles:{fontStyle:"bold"}},"Continuing Qualification – Pilot",{content:"Segment:",styles:{fontStyle:"bold"}},"Flight Training",{content:"Fleet:",styles:{fontStyle:"bold"}},"747"],
       [{content:"Module:",styles:{fontStyle:"bold"}},module()+"  ("+sc.label+", Rev "+sc.rev+")",{content:"Lesson:",styles:{fontStyle:"bold"}},"LOE",{content:"Date:",styles:{fontStyle:"bold"}},sessionDate||"—"],
       [{content:"Instructor:",styles:{fontStyle:"bold"}},(instructor.name||"—")+(instructor.emp?" ("+instructor.emp+")":""),{content:"FSTD:",styles:{fontStyle:"bold"}},{content:f?fstdLabel(f):"—",colSpan:3}],
-      [{content:"Crewmember 1:",styles:{fontStyle:"bold"}},(person.cm1.name||"—")+" · "+duty.cm1+" · "+SEAT_LABEL[seatOf("cm1")],{content:"Crewmember 1 ID:",styles:{fontStyle:"bold"}},person.cm1.emp||"—",{content:"Attempt / T/O / Ldg:",styles:{fontStyle:"bold"}},normAttempt(take.cm1)+" · "+crewSession.cm1.to+" / "+crewSession.cm1.ldg+(crewSession.cm1.spec==="Yes"?" · Special tracking":"")],
-      [{content:"Crewmember 2:",styles:{fontStyle:"bold"}},(person.cm2.name||"—")+" · "+duty.cm2+" · "+SEAT_LABEL[seatOf("cm2")],{content:"Crewmember 2 ID:",styles:{fontStyle:"bold"}},person.cm2.emp||"—",{content:"Attempt / T/O / Ldg:",styles:{fontStyle:"bold"}},normAttempt(take.cm2)+" · "+crewSession.cm2.to+" / "+crewSession.cm2.ldg+(crewSession.cm2.spec==="Yes"?" · Special tracking":"")],
+      [{content:"Crewmember 1:",styles:{fontStyle:"bold"}},(person.cm1.name||"—")+" · "+duty.cm1+" · "+SEAT_LABEL[seatOf("cm1")],{content:"Crewmember 1 ID:",styles:{fontStyle:"bold"}},person.cm1.emp||"—",{content:"Attempt / T/O / Ldg:",styles:{fontStyle:"bold"}},normAttempt(take.cm1)+" · "+crewSession.cm1.to+" / "+crewSession.cm1.ldg+(crewSession.cm1.spec==="Yes"?" · Special tracking":"")+" · Briefed "+(crewSession.cm1.brief||"No")],
+      [{content:"Crewmember 2:",styles:{fontStyle:"bold"}},(person.cm2.name||"—")+" · "+duty.cm2+" · "+SEAT_LABEL[seatOf("cm2")],{content:"Crewmember 2 ID:",styles:{fontStyle:"bold"}},person.cm2.emp||"—",{content:"Attempt / T/O / Ldg:",styles:{fontStyle:"bold"}},normAttempt(take.cm2)+" · "+crewSession.cm2.to+" / "+crewSession.cm2.ldg+(crewSession.cm2.spec==="Yes"?" · Special tracking":"")+" · Briefed "+(crewSession.cm2.brief||"No")],
     ]});
   y=doc.lastAutoTable.finalY+8;
   // LOE results
@@ -2198,7 +2200,7 @@ function applySnapshot(s){
   simDisc.fstd=(s.simDisc&&s.simDisc.fstd)||""; simDisc.items=(s.simDisc&&Array.isArray(s.simDisc.items))?s.simDisc.items.slice():[];
   CMS.forEach(c=>{ person[c].name=(s.person&&s.person[c]&&s.person[c].name)||""; person[c].emp=(s.person&&s.person[c]&&s.person[c].emp)||"";
     if(s.duty&&s.duty[c]) duty[c]=s.duty[c]; take[c]=normAttempt(s.take&&s.take[c]);
-    const v=(s.crewSession&&s.crewSession[c])||{}; crewSession[c]={to:v.to!==undefined?v.to:"0", ldg:v.ldg!==undefined?v.ldg:"0", spec:v.spec||"No"}; });
+    const v=(s.crewSession&&s.crewSession[c])||{}; crewSession[c]={to:v.to!==undefined?v.to:"0", ldg:v.ldg!==undefined?v.ldg:"0", spec:v.spec||"No", brief:v.brief==="Yes"?"Yes":"No", briefAt:v.briefAt||""}; });
   sessionDate=s.sessionDate||""; dateUserSet=!!s.dateUserSet;
   if(s.instructor){ instructor.name=s.instructor.name||""; instructor.emp=s.instructor.emp||""; }
   for(const k in timers){ if(timers[k].intId) clearInterval(timers[k].intId); } clearObj(timers);
@@ -2241,7 +2243,7 @@ function doNew(){
   [state,justCell,pnotes,finalOv,pfOv,obs,sesNote,incReason].forEach(clearObj);
   for(const k in timers){ if(timers[k].intId) clearInterval(timers[k].intId); } clearObj(timers);
   simDisc.items=[]; simDisc.fstd=""; updateSimDiscBtn();
-  CMS.forEach(c=>{ person[c].name=""; person[c].emp=""; take[c]="Initial Attempt"; crewSession[c]={to:"0",ldg:"0",spec:"No"}; });
+  CMS.forEach(c=>{ person[c].name=""; person[c].emp=""; take[c]="Initial Attempt"; crewSession[c]={to:"0",ldg:"0",spec:"No",brief:"No",briefAt:""}; });
   duty.cm1="CA"; duty.cm2="FO"; flightPF="cm1"; csAuto=true; sessionDate=todayISO(); dateUserSet=false; instructor.name=""; instructor.emp=""; VIEW="LOE";
   syncTabs(); autosave(); render();
 }
@@ -2253,6 +2255,7 @@ function swapCrew(){
 }
 function checkUpdates(){ try{ if(window.top && window.top!==window){ window.top.location.reload(); return; } }catch(e){} try{ location.replace(location.pathname+"?v="+Date.now()); }catch(e){ location.reload(); } }
 const CHANGELOG=[
+ {v:"2026.11.03.1",date:"2026-11-03",notes:["Briefed (Briefing completed) Yes/No beside each crewmember. It shows on the AIMS view, the PDF and (Data Test Group) the submitted record with the time it was marked. Presenting the CQLOE.1 briefing deck through the Event Plan offers to record it for the crew."]},
  {v:"2026.11.02.3",date:"2026-11-02",notes:["LOE 25% rule simplified: no pop-up at 2 unsatisfactory phases — the only alert is at the 3rd, telling you to stop the simulator (LOE Unsatisfactory)."]},
  {v:"2026.11.02.2",date:"2026-11-02",notes:["LOE 25% rule: run all 8 phases; with 2 or fewer unsatisfactory phases they are repeated at the end. When a 3rd phase is unsatisfactory for a crewmember, the app tells you to stop the simulator — the LOE is Unsatisfactory (no repeats; remedial training and an alternate LOE). The LOE result then shows Unsatisfactory with the reason (AQPM 4.3)."]},
  {v:"2026.11.02.1",date:"2026-11-02",notes:["Lesson guide: swipe left or right to go to the next or previous page; pages now load in full resolution (300 dpi from the published lesson guide), so text and diagrams stay sharp when you zoom in. With no internet the standard pages still show."]},
@@ -2378,6 +2381,21 @@ document.querySelectorAll(".xtab").forEach(t=>t.addEventListener("click",()=>{ V
   setInterval(()=>{ try{ autosave(); }catch(e){} }, 2000);
 })();
 
+/* Briefed (Briefing completed) — info + offer to record after presenting the LOE briefing deck through the Event Plan */
+document.addEventListener("click",function(e){ const b=e.target.closest("[data-brfinfo]"); if(!b) return; e.preventDefault(); e.stopPropagation();
+  const m=document.createElement("div"); m.className="mo-msg";
+  m.innerHTML="<b>Briefed = Briefing completed</b> — records that the CQLOE.1 briefing was done before the simulator session. It shows on the AIMS view and the PDF.<br><br>Presenting the LOE briefing deck through the Event Plan (Preparing for LOE) offers to set it for both crewmembers.";
+  showModal("Briefed — Briefing completed", m, [{label:"OK",kind:"primary",onClick:closeModal}]); }, true);
+window.BRIEF_DONE_HOOK=function(deck){
+  if(deck!=="loe") return;
+  const cms=CMS.filter(cm=>!isSS(cm)); if(cms.every(cm=>crewSession[cm].brief==="Yes")) return;
+  const m=document.createElement("div"); m.className="mo-msg";
+  m.innerHTML="The CQLOE.1 briefing deck was presented through the Event Plan.<br><br>Record <b>Briefed (Briefing completed) = Yes</b> for the crew? It shows on the AIMS view, the PDF and (Data Test Group) the submitted record.";
+  showModal("Briefing completed", m, [
+    {label:"Record Briefed = Yes", kind:"primary", onClick:()=>{ const t=new Date().toISOString(); cms.forEach(cm=>{ crewSession[cm].brief="Yes"; crewSession[cm].briefAt=t; }); closeModal(); autosave(); render(); }},
+    {label:"Not yet", onClick:closeModal}]);
+};
+
 </script>
 <script>window.BRIEF_DECKS=[{"id": "loe", "label": "CQLOE.1 Briefing / Debriefing", "sub": "Briefing practice scenarios 1–3, Preparing for LOE, debriefing"}];</script>
 <style>
@@ -2419,7 +2437,7 @@ document.querySelectorAll(".xtab").forEach(t=>t.addEventListener("click",()=>{ V
 (function(){
   var BASE="https://rsg747.github.io/aqp-mt-test/decks/";
   var cfg=window.BRIEF_DECKS||[];
-  var cache={}, P={on:false,m:null,list:[],pos:0,rev:false,notes:false,fac:false,hideT:null,lock:null,id:null};
+  var cache={}, P={on:false,m:null,list:[],pos:0,rev:false,notes:false,fac:false,hideT:null,lock:null,id:null,maxSeen:-1};
   function h(s){ return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
   function load(id){
     if(cache[id]) return Promise.resolve(cache[id]);
@@ -2450,7 +2468,7 @@ document.querySelectorAll(".xtab").forEach(t=>t.addEventListener("click",()=>{ V
   function present(id, at){
     var el=document.getElementById("bpPres"); if(!el){ el=document.createElement("div"); el.id="bpPres"; el.className="bp-pres"; document.body.appendChild(el); wire(el); }
     el.style.display="flex"; el.innerHTML='<div class="bp-msg">Loading slides…</div>';
-    P.on=true; P.id=id; P.rev=false; P.notes=false;
+    P.on=true; P.id=id; P.rev=false; P.notes=false; P.maxSeen=-1;
     try{ var fs=el.requestFullscreen||el.webkitRequestFullscreen; if(fs){ var r=fs.call(el); if(r&&r.catch) r.catch(function(){}); } }catch(e){}
     try{ if(navigator.wakeLock) navigator.wakeLock.request("screen").then(function(l){ P.lock=l; }).catch(function(){}); }catch(e){}
     load(id).then(function(m){ P.m=m; P.fac=false; buildList();
@@ -2461,7 +2479,7 @@ document.querySelectorAll(".xtab").forEach(t=>t.addEventListener("click",()=>{ V
   function ansOf(i){ var s=P.m.slides[i+1]; return (s&&s.ans)?i+1:-1; }
   function draw(){
     var el=document.getElementById("bpPres"); if(!el||!P.m) return;
-    var i=P.list[P.pos], s=P.m.slides[i], a=ansOf(i), show=(P.rev&&a>=0)?a:i;
+    var i=P.list[P.pos], s=P.m.slides[i], a=ansOf(i), show=(P.rev&&a>=0)?a:i; if(i>P.maxSeen) P.maxSeen=i;
     var secs=(P.m.sections||[]);
     el.innerHTML='<img alt="Slide '+(i+1)+'" src="'+BASE+P.id+'/'+P.m.slides[show].f+'">'+
       '<div class="bp-tapL" data-bp="prev"></div><div class="bp-tapR" data-bp="next"></div>'+
@@ -2479,7 +2497,7 @@ document.querySelectorAll(".xtab").forEach(t=>t.addEventListener("click",()=>{ V
   }
   function poke(){ var b=document.getElementById("bpBar"); if(!b) return; b.classList.remove("hide"); clearTimeout(P.hideT); P.hideT=setTimeout(function(){ var x=document.getElementById("bpBar"); if(x) x.classList.add("hide"); },3500); }
   function act(a,v){
-    if(a==="exit"){ P.on=false; var el=document.getElementById("bpPres"); if(el){ el.style.display="none"; el.innerHTML=""; } try{ if(document.fullscreenElement) document.exitFullscreen(); else if(document.webkitFullscreenElement) document.webkitExitFullscreen(); }catch(e){} try{ P.lock&&P.lock.release(); }catch(e){} P.lock=null; return; }
+    if(a==="exit"){ try{ var ep=(P.m&&P.m.sections||[]).filter(function(x){return x[0]==="Event plan";})[0]; if(ep && P.maxSeen>=ep[1] && typeof window.BRIEF_DONE_HOOK==="function") setTimeout(function(){ window.BRIEF_DONE_HOOK(P.id); },150); }catch(e){} P.on=false; var el=document.getElementById("bpPres"); if(el){ el.style.display="none"; el.innerHTML=""; } try{ if(document.fullscreenElement) document.exitFullscreen(); else if(document.webkitFullscreenElement) document.webkitExitFullscreen(); }catch(e){} try{ P.lock&&P.lock.release(); }catch(e){} P.lock=null; return; }
     if(!P.m) return;
     if(a==="next"){ if(P.list[P.pos]!=null && ansOf(P.list[P.pos])>=0 && !P.rev){ P.rev=true; } else if(P.pos<P.list.length-1){ P.pos++; P.rev=false; } }
     else if(a==="prev"){ if(P.rev){ P.rev=false; } else if(P.pos>0){ P.pos--; P.rev=false; } }
