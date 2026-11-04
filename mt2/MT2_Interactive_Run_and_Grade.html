@@ -969,7 +969,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var n,r,i,a,
 const GRADES = ["5","4","3","2","2-RP","2-RF","1","1-RP","1-RF","N/A"];
 const BELOW = new Set(["3","2","2-RP","2-RF","1","1-RP","1-RF"]);
 /* ---- document version (bump on each update) ---- */
-const VERSION = "2026.11.03.1";
+const VERSION = "2026.11.03.2";
 const VERSION_DATE = "2026-11-03";
 /* ---- data models ---- */
 // rows present per exercise, in AIMS/PF then PM order
@@ -1168,7 +1168,7 @@ const ATTEMPT_OPTS = ["Initial Attempt","Remedial Attempt 1","Remedial Attempt 2
 const take = {pf1st:"Initial Attempt", pf2nd:"Initial Attempt"};
 /* AIMS 'Module Attempt Status'. Older saved sessions stored a Take number: 1 -> Initial Attempt, n -> Repeat Attempt n-1. */
 function normAttempt(v){ v=String(v==null?"":v); if(ATTEMPT_OPTS.indexOf(v)>=0) return v; const n=parseInt(v,10); if(!n||n<=1) return "Initial Attempt"; return "Repeat Attempt "+Math.min(n-1,4); }
-function attemptOptsHTML(sel){ sel=normAttempt(sel); return ATTEMPT_OPTS.map(o=>`<option${o===sel?" selected":""}>${o}</option>`).join(""); }
+function attemptOptsHTML(sel){ sel=normAttempt(sel); return ATTEMPT_OPTS.map(o=>`<option value="${o}"${o===sel?" selected":""}>${o.replace(" Attempt","")}</option>`).join(""); }
 function nextAttemptNo(v){ v=normAttempt(v); if(v==="Initial Attempt") return 1; return Math.min((parseInt(v.replace(/\D/g,""),10)||0)+1,4); }
 /* ---- crew roster lookup — LOCAL import only, never published, never leaves the device ---- */
 let ROSTER = {};
@@ -2601,6 +2601,7 @@ function toast(msg){ let t=document.getElementById("toast"); if(!t){ t=document.
 /* generic modal */
 function closeModal(){ document.querySelectorAll(".mo-overlay").forEach(o=>o.remove()); }
 const CHANGELOG=[
+ {v:"2026.11.03.2",date:"2026-11-03",notes:["Crew rows fit on one line on the iPad again: tighter spacing and smaller boxes, and the Attempt box shows a short label (Initial, Remedial 1, Repeat 1 …) — AIMS, the PDF and the record still use the full Module Attempt Status."]},
  {v:"2026.11.03.1",date:"2026-11-03",notes:["Briefed (Briefing completed) Yes/No beside each pilot — the AIMS Briefing status field. It shows in the AIMS Module Status line, on the PDF AIMS page. Presenting the CQMT2.1 briefing deck through the Event Plan offers to record it for the crew."]},
  {v:"2026.10.30.3",date:"2026-10-30",notes:["KV: added N/A — set automatically for Seat Support, and used on a later attempt (Remedial/Repeat) when the KV was already passed. The PDF shows ‘Not entered’ if the KV is left blank."]},
  {v:"2026.10.30.2",date:"2026-10-30",notes:["KV grading: a KV box (— / Sat / Unsat) beside each pilot records the CQMT2.1 Knowledge Validation (Preflight Pictorial Visual Inspection + Airplane Systems and Limitations). It shows in the AIMS Module Status line (the AIMS form's KV status field), on the PDF AIMS page. Tap the i for the standard (80% corrected to 100%; Unsat = retrain and retest). Starting the sim timer warns if a pilot's KV is not Satisfactory."]},
@@ -3462,5 +3463,20 @@ window.BRIEF_DONE_HOOK=function(deck){
   ]);
 };
 </script>
+<style id="crewcompact">
+body .crewwrap{column-gap:6px !important}
+body .crewwrap .meta{column-gap:5px !important;gap:6px 5px !important}
+body .crewwrap .meta label{gap:2px !important;font-size:11.5px !important;letter-spacing:-.1px}
+body .crewwrap .meta input[data-field="name"]{width:98px !important}
+body .crewwrap .meta input[data-field="emp"]{width:50px !important}
+body .crewwrap .meta select.dutysel{padding:4px 1px !important;font-size:11.5px !important}
+body .crewwrap .meta select.dutysel[data-person]:not([data-cs]){width:56px !important;min-width:0 !important}
+body .crewwrap .meta select.dutysel[data-take]{width:88px !important;min-width:0 !important}
+body .crewwrap .meta select.dutysel[data-cs="to"],body .crewwrap .meta select.dutysel[data-cs="ldg"]{width:38px !important;min-width:0 !important}
+body .crewwrap .meta select.dutysel[data-cs="spec"],body .crewwrap .meta select.dutysel[data-cs="brief"]{width:48px !important;min-width:0 !important}
+body .crewwrap .meta select.dutysel.kvsel{width:56px !important;min-width:0 !important}
+body .crewwrap .meta .stinfo{width:13px !important;height:13px !important;min-width:0 !important;line-height:11px !important;font-size:9px !important;margin:0 1px 0 0 !important;padding:0 !important}
+body .crewwrap>.swapbtn{padding:6px 8px !important}
+</style>
 </body>
 </html>

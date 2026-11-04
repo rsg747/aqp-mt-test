@@ -666,6 +666,19 @@
   .stlbl{gap:3px !important}.stinfo{border:1px solid #9db4d6;background:#eef3fa;color:#2b6fff;border-radius:50%;width:18px;height:18px;padding:0;font:800 11px Georgia,serif;font-style:italic;line-height:16px;cursor:pointer;margin:0 2px 0 1px;flex:none}
   .crewwrap{display:grid !important;grid-template-columns:minmax(0,1fr) auto;column-gap:10px;align-items:center;padding-right:0 !important}.crewwrap>.meta{grid-column:1;flex-wrap:wrap !important;overflow:visible !important;row-gap:6px;margin:4px 0 !important}.crewwrap>.swapbtn{position:static !important;grid-column:2;grid-row:1 / span 2;align-self:center;white-space:nowrap}.crewwrap .meta select.dutysel[data-person]{width:78px !important;min-width:0 !important}.crewwrap .meta select.dutysel[data-take]{width:132px !important;min-width:0 !important}.crewwrap .meta input[data-field="name"]{width:115px !important}.crewwrap .meta input[data-field="emp"]{width:70px !important}
 .dutysel.briefsel.yes{background:#e6f6ec;border-color:#9dd3b0;color:#14713c;font-weight:800}
+body .crewwrap{column-gap:6px !important}
+body .crewwrap .meta{column-gap:5px !important;gap:6px 5px !important}
+body .crewwrap .meta label{gap:2px !important;font-size:11.5px !important;letter-spacing:-.1px}
+body .crewwrap .meta input[data-field="name"]{width:98px !important}
+body .crewwrap .meta input[data-field="emp"]{width:50px !important}
+body .crewwrap .meta select.dutysel{padding:4px 1px !important;font-size:11.5px !important}
+body .crewwrap .meta select.dutysel[data-person]:not([data-cs]){width:56px !important;min-width:0 !important}
+body .crewwrap .meta select.dutysel[data-take]{width:88px !important;min-width:0 !important}
+body .crewwrap .meta select.dutysel[data-cs="to"],body .crewwrap .meta select.dutysel[data-cs="ldg"]{width:38px !important;min-width:0 !important}
+body .crewwrap .meta select.dutysel[data-cs="spec"],body .crewwrap .meta select.dutysel[data-cs="brief"]{width:48px !important;min-width:0 !important}
+body .crewwrap .meta select.dutysel.kvsel{width:56px !important;min-width:0 !important}
+body .crewwrap .meta .stinfo{width:13px !important;height:13px !important;min-width:0 !important;line-height:11px !important;font-size:9px !important;margin:0 1px 0 0 !important;padding:0 !important}
+body .crewwrap>.swapbtn{padding:6px 8px !important}
 </style>
 
 </head>
@@ -1266,7 +1279,7 @@ const SCEN = {
    ===================================================================== */
 const GRADES = ["5","4","3","2","2-RP","2-RF","1","1-RP","1-RF","N/A"];
 const BELOW = new Set(["3","2","2-RP","2-RF","1","1-RP","1-RF"]);
-const VERSION = "2026.11.03.1";
+const VERSION = "2026.11.03.2";
 const VERSION_DATE = "2026-11-03";
 const DIMS = [["H","Handling"],["SOP","SOP"],["A","Automation"],["CRM","CRM"]];
 const DIMNM = {H:"Handling",SOP:"SOP",A:"Automation",CRM:"CRM"};
@@ -1303,7 +1316,7 @@ function syncCrewSession(){ if(!csAuto) return; CMS.forEach(cm=>{ crewSession[cm
 const ATTEMPT_OPTS = ["Initial Attempt","Remedial Attempt 1","Remedial Attempt 2","Remedial Attempt 3","Remedial Attempt 4","Repeat Attempt 1","Repeat Attempt 2","Repeat Attempt 3","Repeat Attempt 4"];
 const take = {cm1:"Initial Attempt", cm2:"Initial Attempt"};
 function normAttempt(v){ v=String(v==null?"":v); if(ATTEMPT_OPTS.indexOf(v)>=0) return v; return "Initial Attempt"; }
-function attemptOptsHTML(sel){ sel=normAttempt(sel); return ATTEMPT_OPTS.map(o=>`<option${o===sel?" selected":""}>${o}</option>`).join(""); }
+function attemptOptsHTML(sel){ sel=normAttempt(sel); return ATTEMPT_OPTS.map(o=>`<option value="${o}"${o===sel?" selected":""}>${o.replace(" Attempt","")}</option>`).join(""); }
 function nextAttemptNo(v){ v=normAttempt(v); if(v==="Initial Attempt") return 1; return Math.min((parseInt(v.replace(/\D/g,""),10)||0)+1,4); }
 function todayISO(){ const d=new Date(), m=String(d.getMonth()+1).padStart(2,"0"), day=String(d.getDate()).padStart(2,"0"); return d.getFullYear()+"-"+m+"-"+day; }
 function esc(s){ return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
@@ -2255,6 +2268,7 @@ function swapCrew(){
 }
 function checkUpdates(){ try{ if(window.top && window.top!==window){ window.top.location.reload(); return; } }catch(e){} try{ location.replace(location.pathname+"?v="+Date.now()); }catch(e){ location.reload(); } }
 const CHANGELOG=[
+ {v:"2026.11.03.2",date:"2026-11-03",notes:["Crew rows fit on one line on the iPad again: tighter spacing and smaller boxes, and the Attempt box shows a short label (Initial, Remedial 1, Repeat 1 …) — AIMS, the PDF and the record still use the full Module Attempt Status."]},
  {v:"2026.11.03.1",date:"2026-11-03",notes:["Briefed (Briefing completed) Yes/No beside each crewmember. It shows on the AIMS view, the PDF and (Data Test Group) the submitted record with the time it was marked. Presenting the CQLOE.1 briefing deck through the Event Plan offers to record it for the crew."]},
  {v:"2026.11.02.3",date:"2026-11-02",notes:["LOE 25% rule simplified: no pop-up at 2 unsatisfactory phases — the only alert is at the 3rd, telling you to stop the simulator (LOE Unsatisfactory)."]},
  {v:"2026.11.02.2",date:"2026-11-02",notes:["LOE 25% rule: run all 8 phases; with 2 or fewer unsatisfactory phases they are repeated at the end. When a 3rd phase is unsatisfactory for a crewmember, the app tells you to stop the simulator — the LOE is Unsatisfactory (no repeats; remedial training and an alternate LOE). The LOE result then shows Unsatisfactory with the reason (AQPM 4.3)."]},
