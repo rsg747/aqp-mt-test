@@ -969,7 +969,7 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var n,r,i,a,
 const GRADES = ["5","4","3","2","2-RP","2-RF","1","1-RP","1-RF","N/A"];
 const BELOW = new Set(["3","2","2-RP","2-RF","1","1-RP","1-RF"]);
 /* ---- document version (bump on each update) ---- */
-const VERSION = "2026.11.05.3";
+const VERSION = "2026.11.05.4";
 const VERSION_DATE = "2026-11-05";
 /* ---- data models ---- */
 // rows present per exercise, in AIMS/PF then PM order
@@ -1761,7 +1761,7 @@ function buildProfile(ex){
     n._nr = clickable && nodeNotRequired(ex, idx);
     n._lines = wrap2(n.lbl, 76);
     n._sub = n.sub ? wrap2(n.sub, 74) : [];
-    if(n._nr){ n._sub = n._sub.concat(["Not Required"]); }
+    if(n._nr){ n._sub = /^CAT II/.test(n.lbl) ? n._sub.concat(["Not Required — still","reposition for Eng-Inop GA"]) : n._sub.concat(["Not Required"]); }
     const w = Math.max(...[...n._lines, ...n._sub].map(approxW));
     const lx = Math.min(Math.max(n.cx, padL+w/2), VW-6-w/2);
     const x0 = lx - w/2, x1 = lx + w/2;
@@ -1822,7 +1822,7 @@ function buildProfile(ex){
     n._lines.forEach(ln=>{ add("text",{x:n._lx,y:yy,"text-anchor":"middle",
                   class:"prof-lbl"+(n.crit?" crit":"")+(n._nr?" nr":"")},ln); yy+=11; });
     n._sub.forEach(ln=>{ add("text",{x:n._lx,y:yy,"text-anchor":"middle",
-                  class:(n._nr&&ln.indexOf("Not Required")===0?"prof-nrtag":"prof-lbl prof-sub")},ln); yy+=11; });
+                  class:(n._nr&&(ln.indexOf("Not Required")===0||ln.indexOf("reposition for")===0)?("prof-nrtag"+(/^CAT II/.test(n.lbl)?" rp":"")):"prof-lbl prof-sub")},ln); yy+=11; });
   });
   phaseBoxes.forEach(pb=>{
     const nearY = pb.cy < pb.my ? pb.bot+2 : pb.top-2;
@@ -2031,7 +2031,8 @@ function openLessonGuide(ex, idx){
   // body
   let body = `<div class="lg-body">`;
   if(nodeNotRequired(ex, idx)){
-    body += `<div class="lg-nrbanner">\u2715 &nbsp;NOT REQUIRED THIS RUN \u2014 Duty-Specific Pairing. No grade needed.</div>`;
+    if(/^CAT II/.test(phase||"")) body += `<div class="lg-nrbanner rp">CAT II NOT FLOWN THIS RUN \u2014 Duty-Specific Pairing (no CAT II grade). <b>The reposition is still required:</b> at the end of Circuit 5, reposition to at least a 5 NM final Runway 25L with one engine inoperative, so this run\u2019s PF flies the Engine Inoperative Go-Around (Circuit 7, task 6.9.3) as PF \u2014 tower commands the go-around. Each pilot (except SSI) must complete the Eng-Inop Go-Around as PF from their duty position (LG p.17).</div>`;
+    else body += `<div class="lg-nrbanner">\u2715 &nbsp;NOT REQUIRED THIS RUN \u2014 Duty-Specific Pairing. No grade needed.</div>`;
   }
   if(!data){
     body += `<div class="lg-sec"><div class="lg-iptext">No lesson-guide content linked to this point yet.</div></div>`;
@@ -2601,6 +2602,7 @@ function toast(msg){ let t=document.getElementById("toast"); if(!t){ t=document.
 /* generic modal */
 function closeModal(){ document.querySelectorAll(".mo-overlay").forEach(o=>o.remove()); }
 const CHANGELOG=[
+ {v:"2026.11.05.4",date:"2026-11-05",notes:["CAT II (Circuit 6) in Run 2 for CA/FO, CA/SSI and FO/SSI: the profile point now reads “Not Required — still reposition for Eng-Inop GA” (amber), and its lesson-guide pop-up explains that the CAT II is not flown but the reposition is still required — 5 NM final 25L with one engine inoperative — so this run’s PF flies the Engine Inoperative Go-Around (Circuit 7) as PF."]},
  {v:"2026.11.05.3",date:"2026-11-05",notes:["Debriefing moved to the 🗣 Debrief button: it now offers ▶ Present debriefing slides (the debriefing section of the briefing / debriefing deck, full screen) and records Debrief completed — on exit from the slides it offers to record it. The Briefing menu no longer lists the Debriefing section."]},
  {v:"2026.11.05.2",date:"2026-11-05",notes:["Observing Evaluator / FAA Inspector: 👁 button in the toolbar for the observer's name and ID (leave blank if none). It prints on the PDF."]},
  {v:"2026.11.05.1",date:"2026-11-05",notes:["Debriefing completed: a 🗣 Debrief button in the toolbar records that the debrief was done (with the time). It prints on the PDF, is saved with the session and clears with New."]},
@@ -3592,5 +3594,6 @@ html.aqp-pwa .dbf-ov{top:calc((max(env(safe-area-inset-top,0px),24px) + 30px) * 
 })();
 </script>
 
+<style id="catii-rp">.prof-nrtag.rp{fill:#9a6200 !important}.lg-nrbanner.rp{background:#fff6dc !important;color:#6b4a00 !important;border-color:#f0d27a !important;text-align:left;line-height:1.45}</style>
 </body>
 </html>
