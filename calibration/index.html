@@ -113,13 +113,23 @@ td.hot{background:var(--warn-soft)}
 .split div{background:var(--panel);border-radius:6px;padding:10px 12px;min-width:0}
 .split p{margin:2px 0 0;font-size:15px}
 .ref{font-size:14px;color:var(--muted)}
+.stepper{list-style:none;margin:12px 0 0;padding:0;display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:4px;counter-reset:s}
+.stepper li{counter-increment:s;background:var(--tint);color:var(--muted);border-radius:4px;padding:6px 2px;text-align:center;font-size:13px;font-weight:600;min-width:0;overflow-wrap:anywhere}
+.stepper li.st-done{background:var(--good-soft);color:var(--good)}
+.stepper li.now{background:var(--accent);color:var(--accent-ink)}
+.brand span b{color:var(--bad)}
+.notice b{color:var(--ink)}
+.seg.overall{display:flex;flex-wrap:wrap;width:100%}
+.seg.overall button{flex:1 1 150px;border-left:1px solid var(--rule)}
+.stepper li{min-height:32px}
+@media (max-width:640px){.stepper{grid-template-columns:repeat(4,minmax(0,1fr))}}
 .foot{font-size:13px;color:var(--muted)}
 @media (max-width:640px){.item{grid-template-columns:minmax(0,1fr)}.brand h1{font-size:24px}.seg button{min-width:46px}}
 @media (prefers-reduced-motion:no-preference){.fill{transition:width .25s ease}}
 </style>
 
 <header class="top"><div class="top-in">
-  <div class="brand"><h1>Calibration Manager</h1><span>B747 IEQ concept demo · sample data</span></div>
+  <div class="brand"><h1>Calibration Manager</h1><span>B747 Instructor QA · <b>DEMO MODE</b> · sample data</span></div>
   <nav class="tabs" role="tablist" id="tabs"></nav>
 </div></header>
 <main class="wrap" id="main"></main>
@@ -127,218 +137,280 @@ td.hot{background:var(--warn-soft)}
 <script>
 (function(){
 'use strict';
-var KEY='calibration-manager-demo-v1';
-var CAT1=[
- ['Regulatory & Procedure',['Required courseware content delivered: taught to the FAA-approved content and facilitator notes','Company and regulatory policy and procedures presented correctly (FOM, FCOM, FCTM)','SOPs applied and taught correctly','All required questions asked','Non-normal, QRH and ECL procedures handled correctly']],
- ['Safety & Evaluator Role',['IOS operation and safety requirements met','Ensures safety of flight; maintains appropriate supervisory and evaluator boundaries','Lesson objectives and requirements completed']],
- ['Records',['Written record maintained for review','Documentation correct, complete, and evaluation accurate','Communication with Fleet Captain when required']]];
-var CAT2=[
- ['Facilitation',['Facilitates discussion rather than lecturing or reading the guide verbatim','Adjusts facilitation level to engage the crew; draws out quiet crewmembers','Encourages self-assessment and root-cause discovery']],
- ['Delivery',['Establishes objectives and responsibilities clearly','Effective scenario management and use of time','Adapts effectively to the dynamic environment','Uses teaching aids and technology effectively','Overall instructional effectiveness']],
- ['Debriefing',['Crew-centered debrief; reinforces positives and finds causes','Offers techniques for improved performance']]];
-var SOURCES=['I/E AQP Manual','AQPM Qualification Standards','AQPM (other chapter)','FAA-approved courseware','FOM','FCOM','FCTM','QRH / ECL','14 CFR Part 121 / Subpart Y'];
+var KEY='calibration-manager-demo-v2',DAY=864e5;
+var CATS=[
+ ['TK','Technical knowledge','Accurate, current explanations; applies procedures, limitations and references; resolves uncertainty.'],
+ ['IT','Instructional technique','States objectives, organizes content, checks understanding, adapts within curriculum limits, and engages learners.'],
+ ['STD','Standardization','Uses approved curriculum, scenarios, terminology, grading criteria and guidance without unauthorized deviation.'],
+ ['TNG','Training management','Controls time and pace, completes objectives, manages disruptions, and escalates incomplete training correctly.'],
+ ['GRD','Assessment and debriefing','Observes behavior, applies standards objectively, diagnoses factors, and gives actionable feedback.'],
+ ['CRM','Professionalism and CRM','Maintains respect, psychological safety, communication, inclusion, integrity, and CRM integration.'],
+ ['DOC','Documentation and compliance','Completes records accurately and on time; verifies required qualifications; protects sensitive information.']];
+var CODES=[['TK','Technical knowledge'],['IT','Instructional technique'],['STD','Standardization'],['TNG','Training management'],['GRD','Grading and assessment'],['DBR','Debriefing'],['CRM','CRM and human factors'],['DOC','Documentation'],['COM','Compliance'],['CUR','Curriculum or courseware'],['SYS','System or equipment'],['PRO','Professional conduct']];
+var SOURCES=['I/E AQP Manual','AQPM Qualification Standards','AQPM (other chapter)','FAA-approved courseware','FOM','FCOM','FCTM','QRH / ECL','FOTM','14 CFR Part 121 / Subpart Y'];
+var RATE={'4':'Exceeds Standard','3':'Meets Standard','2':'Needs Improvement','1':'Unsatisfactory'};
+var TYPES=['Routine (QAO)','Targeted (QAO)','Follow-up (QAO)','Performance Evaluation','Supervised Training','Calibration'];
+var RESET=['Routine (QAO)','Performance Evaluation'];
+var ACT=['CQMV.1','CQMT1.1','CQMT2.1','CQLOE.1','CQLC','CQILT.1'];
+var ENV=['Full flight simulator','Flight training device','Classroom','Aircraft','Briefing or debriefing'];
+var IEQS=['IEQ A','IEQ B','IEQ C','IEQ D','IEQ E'];
+var ROOT=['Knowledge','Skill','Instructional technique','Standardization','Assessment','Documentation','Workload','Equipment','Courseware','Curriculum','Communication','Organizational process'];
+var INTERIM=['No restriction','Restricted','Suspended','Other'];
+var LEVELS={1:'Coaching',2:'Formal remediation',3:'Qualification review',4:'Removal review'};
+var AUTH={1:['IEQ','Fleet Standards Captain'],2:['Fleet Standards Captain'],3:['Director of Training'],4:['Authorized authority']};
+var STEPS=['Identify','Debrief','Triage','Plan','Complete','Verify','Decide','Monitor'];
 var LIK=['SA','A','N','D','SD','NA'];
 var FB=[
- ['Standards findings',[
-  ['warranted','The Standards findings were warranted.'],
-  ['tied','Each Not Met was tied to a specific standard, not preference or technique.'],
-  ['shown','The IEQ showed or explained the citation and exactly where I deviated.'],
-  ['notpref','Nothing recorded as a finding was really just a different technique.']]],
- ['Instruction Quality',[
-  ['dev','The feedback was developmental and helped me improve.'],
-  ['facil','Facilitating rather than reading verbatim was accepted.'],
-  ['tech','Personal technique that met the standard was left alone.'],
-  ['spec','The coaching was specific and useful.']]],
- ['The session overall',[
-  ['prof','The IEQ was professional and nonjudgmental throughout.'],
-  ['dist','Findings stayed on standards and coaching stayed on craft.'],
-  ['recog','The calibration recognized what I did well.'],
-  ['help','Overall, this calibration will help me improve my instruction.']]]];
-var ACT=['CQMV.1','CQMT1.1','CQMT2.1','CQLOE.1','CQLC','CQILT.1'];
-var OBS=['Quality Assurance Observation','Supervised Training','Performance Evaluation'];
-var IEQS=['IEQ A','IEQ B','IEQ C','IEQ D','IEQ E'];
-var DAY=864e5;
+ ['Findings',[['warranted','Any rating of 2 or 1 was warranted.'],['tied','Each 2 or 1 was tied to a specific standard, not preference or technique.'],['shown','The IEQ showed me the reference and exactly where I deviated.'],['notpref','Nothing recorded as a finding was really just a different technique.']]],
+ ['Coaching',[['dev','The feedback was developmental and helped me improve.'],['facil','Facilitating rather than reading verbatim was accepted.'],['tech','Personal technique that met the standard was left alone.'],['spec','The coaching was specific and useful.']]],
+ ['The session overall',[['prof','The IEQ was professional and nonjudgmental throughout.'],['dist','Findings stayed on standards and coaching stayed on craft.'],['recog','The calibration recognized what I did well.'],['help','Overall, this calibration will help me improve my instruction.']]]];
 function today(){var d=new Date();d.setHours(0,0,0,0);return d}
-function qStart(d){return new Date(d.getFullYear(),Math.floor(d.getMonth()/3)*3,1)}
-function qName(d){return 'Q'+(Math.floor(d.getMonth()/3)+1)+' '+d.getFullYear()}
 function iso(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
 function parse(s){var p=s.split('-');return new Date(+p[0],+p[1]-1,+p[2])}
 function fmt(s){return parse(s).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}
 function addM(s,m){var d=parse(s),day=d.getDate();d.setDate(1);d.setMonth(d.getMonth()+m);var last=new Date(d.getFullYear(),d.getMonth()+1,0).getDate();d.setDate(Math.min(day,last));return d}
+function addD(s,n){return new Date(parse(s).getTime()+n*DAY+36e5)}
+function addBD(s,n){var d=parse(s);while(n>0){d=new Date(d.getTime()+DAY+36e5);d.setHours(0,0,0,0);if(d.getDay()!==0&&d.getDay()!==6)n--}return d}
+function qStart(d){return new Date(d.getFullYear(),Math.floor(d.getMonth()/3)*3,1)}
+function qName(d){return 'Q'+(Math.floor(d.getMonth()/3)+1)+' '+d.getFullYear()}
 function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+function opt(a,v,blank){return(blank?'<option value="">'+blank+'</option>':'')+a.map(function(x){return'<option'+(x===v?' selected':'')+'>'+esc(x)+'</option>'}).join('')}
+function now(){return new Date().toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})}
 function seed(){
- var t=today(),q=qStart(t),el=Math.max(1,Math.floor((t-q)/DAY)),inQ=function(f){return iso(new Date(q.getTime()+Math.floor(el*f)*DAY))},ago=function(n){return iso(new Date(t.getTime()-n*DAY))};
+ var t=today(),q=qStart(t),el=Math.max(1,Math.floor((t-q)/DAY)),inQ=function(f){return iso(new Date(q.getTime()+Math.floor(el*f)*DAY+36e5))},ago=function(n){return iso(new Date(t.getTime()-n*DAY+36e5))};
  var kinds=['SCP','SI','SCP','SI','SCP','LCP','SI','SCP','SI','SCP','SI','LCP','SCP','SI','SCP','SI'];
  var last=[inQ(.05),inQ(.15),inQ(.3),inQ(.45),inQ(.6),inQ(.75),inQ(.9),ago(125),ago(160),ago(190),ago(250),ago(300),ago(342),ago(354),ago(381),ago(401)];
  var roster=last.map(function(d,i){return{id:'I/E '+String(i+1).padStart(2,'0'),cls:kinds[i],last:d}});
- var F=function(item,behavior,source,ref,cons){return{item:item,behavior:behavior,source:source,ref:ref,cons:cons}};
- var ev=[
-  {id:'E1',date:last[0],ie:'I/E 01',ieq:'IEQ A',obs:OBS[0],act:'CQMV.1',find:[],iq:3.4,ex:false},
-  {id:'E2',date:last[1],ie:'I/E 02',ieq:'IEQ B',obs:OBS[0],act:'CQMT1.1',find:[F('All required questions asked','Skipped two required questions in the briefing.','I/E AQP Manual','Facilitation Checklist, p.66','Crew missed required content; standardization gap.')],iq:3.0,ex:false},
-  {id:'E3',date:last[2],ie:'I/E 03',ieq:'IEQ C',obs:OBS[2],act:'CQLOE.1',find:[F('Ensures safety of flight; maintains appropriate supervisory and evaluator boundaries','Coached the crew during a repeated event set.','AQPM (other chapter)','AQPM 4.3.13, Event Set Remediation','The repeat no longer measures crew performance.')],iq:2.7,ex:false},
-  {id:'E4',date:last[3],ie:'I/E 04',ieq:'IEQ A',obs:OBS[1],act:'CQMT2.1',find:[],iq:3.8,ex:true,note:'Crew-led debrief using high-level facilitation.'},
-  {id:'E5',date:last[4],ie:'I/E 05',ieq:'IEQ D',obs:OBS[0],act:'CQMV.1',find:[F('Documentation correct, complete, and evaluation accurate','Form not signed until two days after the event.','I/E AQP Manual','AIMS Training Forms, p.11','Delayed record and qualification processing.')],iq:3.2,ex:false},
-  {id:'E6',date:last[5],ie:'I/E 06',ieq:'IEQ E',obs:OBS[2],act:'CQLC',find:[],iq:3.5,ex:false},
-  {id:'E7',date:last[6],ie:'I/E 07',ieq:'IEQ B',obs:OBS[0],act:'CQLOE.1',find:[],iq:3.6,ex:true,note:'Clean seat-support boundaries and a focused self-assessment.'}];
- var rng=(function(s){return function(){s=(s*16807)%2147483647;return s/2147483647}})(4242);
- var fb=[],keys=[];FB.forEach(function(g){g[1].forEach(function(q){keys.push(q[0])})});
- IEQS.forEach(function(ieq){for(var i=0;i<9;i++){var a={};keys.forEach(function(k,x){
-   var p=(ieq==='IEQ C'&&(k==='tech'||k==='notpref'))?.45:.9;
-   if(x<4&&i%3===0){a[k]='NA';return}
-   var r=rng();a[k]=r<p?(rng()<.55?'SA':'A'):(rng()<.5?'N':'D')});
-   fb.push({ieq:ieq,a:a})}});
- return{roster:roster,events:ev,fb:fb}
+ var ieqs=[{id:'IEQ A',cal:ago(62)},{id:'IEQ B',cal:ago(118)},{id:'IEQ C',cal:ago(388)},{id:'IEQ D',cal:ago(40)},{id:'IEQ E',cal:ago(205)}];
+ var R=function(o){var r={};CATS.forEach(function(c){r[c[0]]=o&&o[c[0]]||'3'});return r};
+ var F=function(code,behavior,source,ref,cons,sev,cause){return{code:code,behavior:behavior,source:source,ref:ref,cons:cons,sev:sev,cause:cause||'Individual',rec:false}};
+ var f2=F('STD','Skipped two required questions in the briefing.','I/E AQP Manual','Facilitation Checklist, p.66','Crew missed required content.','Low');
+ var f3=F('GRD','Coached the crew during a repeated LOE event set.','AQPM (other chapter)','AQPM 4.3.13, Event Set Remediation','The repeat no longer measured crew performance.','High');
+ var f5=F('DOC','Form signed two days after the event, second occurrence.','I/E AQP Manual','AIMS Training Forms, p.11','Delayed record processing.','Medium');f5.rec=true;
+ var f9=F('TNG','Two lesson objectives not completed; not escalated.','FAA-approved courseware','CQMT1.1 lesson guide','Crew left without required training.','Medium');
+ var f10=F('CUR','Facilitator note points to a superseded reference.','FAA-approved courseware','CQMV.1 facilitator notes','Three I/Es taught the same outdated item.','Low','Systemic');
+ var f12=F('IT','Lectured through the debrief despite a strong crew.','I/E AQP Manual','Techniques and Best Practices, p.60','Crew did not self-assess.','Low');
+ var O=function(n,date,ie,ieq,type,act,rate,ov,find,str){return{id:'OBS-'+String(n).padStart(4,'0'),date:date,ie:ie,ieq:ieq,type:type,act:act,env:'Full flight simulator',rate:rate,overall:ov,find:find||[],str:str||'',dev:'',com:'',esc:false}};
+ var obs=[
+  O(1,last[0],'I/E 01','IEQ A',TYPES[0],'CQMV.1',R(),'3'),
+  O(2,last[1],'I/E 02','IEQ B',TYPES[0],'CQMT1.1',R({STD:'2'}),'2',[f2]),
+  O(3,last[2],'I/E 03','IEQ C',TYPES[3],'CQLOE.1',R({GRD:'1',STD:'2'}),'1',[f3]),
+  O(4,last[3],'I/E 04','IEQ A',TYPES[0],'CQMT2.1',R({GRD:'4',IT:'4'}),'4',[],'Crew-led debrief using high-level facilitation.'),
+  O(5,last[4],'I/E 05','IEQ D',TYPES[0],'CQMV.1',R({DOC:'2'}),'3',[f5]),
+  O(6,last[5],'I/E 06','IEQ E',TYPES[3],'CQLC',R(),'3'),
+  O(7,last[6],'I/E 07','IEQ B',TYPES[0],'CQLOE.1',R({CRM:'4',TNG:'4'}),'4',[],'Clean seat-support boundaries and a focused self-assessment.')];
+ var L=function(by,txt){return[{at:'Sample record',by:by,txt:txt}]};
+ var C=function(n,o,lv,status,step,opened,stepAt,extra){var c={id:'QA-'+String(t.getFullYear()).slice(2)+'-'+String(n).padStart(3,'0'),obs:o.id,ie:o.ie,ieq:o.ieq,find:o.find,level:lv,cause:o.find[0].cause,root:'',interim:'No restriction',actions:[],criteria:'',method:'',verifier:'',vdate:'',vresult:'',vevidence:'',authority:'',rationale:'',comments:'',ack:false,opened:opened,stepAt:stepAt,status:status,step:step,monitor:'',closed:'',log:L(o.ieq,'Finding recorded from '+o.id)};for(var k in extra)c[k]=extra[k];return c};
+ var o9=O(8,ago(58),'I/E 09','IEQ D',TYPES[0],'CQMT1.1',R({TNG:'2',DOC:'2'}),'2',[f9]);
+ var o10=O(9,ago(70),'I/E 10','IEQ A',TYPES[0],'CQMV.1',R({STD:'2'}),'3',[f10]);
+ var o12=O(10,ago(150),'I/E 12','IEQ E',TYPES[0],'CQMT2.1',R({IT:'2'}),'2',[f12]);
+ obs.push(o9,o10,o12);
+ var cases=[
+  C(1,obs[2],3,'Finding Under Review',2,last[2],ago(1),{interim:'Restricted'}),
+  C(2,obs[1],1,'Coaching Open',3,last[1],ago(2),{cause:'Individual',root:'Standardization'}),
+  C(3,obs[4],2,'Verification Scheduled',5,last[4],iso(today()),{root:'Documentation',actions:[{t:'Review AIMS form timing requirements',o:'I/E 05',d:iso(today()),done:true}],criteria:'Next three forms signed on time.',method:'Records review plus follow-up observation',verifier:'IEQ B',vdate:iso(addBD(iso(today()),6))}),
+  C(4,o9,2,'Formal Remediation Open',4,ago(58),ago(50),{root:'Instructional technique',actions:[{t:'Supervised AQP event with time management focus',o:'Fleet Standards Captain',d:ago(12),done:false}],criteria:'All objectives completed within planned hours.',method:'Follow-up observation'}),
+  C(5,o10,1,'Extended',4,ago(70),ago(12),{cause:'Systemic',root:'Courseware',rationale:'Waiting on AQP Change Request approval.',actions:[{t:'Submit AQP Change Request for facilitator note',o:'Senior Manager, AQP',d:iso(addBD(iso(today()),8)),done:false}],criteria:'Corrected note published to all I/Es.',method:'Courseware audit'}),
+  C(6,o12,1,'Closed Successful',7,ago(150),ago(110),{root:'Instructional technique',authority:'Fleet Standards Captain',vresult:'Successful',vevidence:'Follow-up debrief crew-centered, rated 3.',verifier:'IEQ A',monitor:iso(addD(ago(110),90)),closed:ago(110),actions:[{t:'Observe a high-facilitation debrief with a mentor',o:'I/E 12',d:ago(125),done:true}],criteria:'Crew self-assesses before I/E input.',method:'Follow-up observation'})];
+ var norm={'IEQ A':R({IT:'3',GRD:'3'}),'IEQ B':R({GRD:'2'}),'IEQ C':R({IT:'2',GRD:'1',STD:'2'}),'IEQ D':R({GRD:'3'}),'IEQ E':R({IT:'4',GRD:'3'})};
+ var rng=(function(s){return function(){s=(s*16807)%2147483647;return s/2147483647}})(4242),fb=[],keys=[];
+ FB.forEach(function(g){g[1].forEach(function(q){keys.push(q[0])})});
+ IEQS.forEach(function(ieq){for(var i=0;i<9;i++){var a={};keys.forEach(function(k,x){var p=(ieq==='IEQ C'&&(k==='tech'||k==='notpref'))?.45:.9;if(x<4&&i%3===0){a[k]='NA';return}var r=rng();a[k]=r<p?(rng()<.55?'SA':'A'):(rng()<.5?'N':'D')});fb.push({ieq:ieq,a:a})}});
+ return{roster:roster,ieqs:ieqs,obs:obs,cases:cases,norm:norm,fb:fb,base:{due:22,onTime:21,first:14,firstOk:13,closed:18,repeat:1,days:[14,18,21,24,26,29,31,33,35,38,41,44,47,52,56,61,67,74]},doc:97,seq:{o:11,c:7}}
 }
 var D=load();
 function load(){try{var r=localStorage.getItem(KEY);if(r)return JSON.parse(r)}catch(e){}return seed()}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(D))}catch(e){}}
-var UI={view:'how',draft:null,justDone:null,fbDraft:null,fbFrom:null,fbDone:false,armReset:false};
+var UI={view:'how',draft:null,done:null,fbDraft:null,fbFrom:null,fbDone:false,arm:false,cid:null};
 function status(r){var due=addM(r.last,12),left=Math.round((due-today())/DAY);
- if(left<0)return{k:'over',left:left,due:due,txt:'Overdue',pill:'p-bad',rem:'Escalated to Fleet Standards Captain, '+(-left)+' days past due'};
+ if(left<0)return{k:'over',left:left,due:due,txt:'Overdue',pill:'p-bad',rem:'Escalated to manager, '+(-left)+' days past due'};
  if(left<=30)return{k:'due',left:left,due:due,txt:'Due soon',pill:'p-warn',rem:'11-month reminder sent '+fmt(iso(addM(r.last,11)))};
  return{k:'cur',left:left,due:due,txt:'Current',pill:'p-good',rem:'Next reminder '+fmt(iso(addM(r.last,11)))}}
 function counts(){var c={cur:0,due:0,over:0};D.roster.forEach(function(r){c[status(r).k]++});return c}
-function tabs(){var c=counts(),n=c.due+c.over;var T=[['how','The Proposal'],['board','Currency Board'+(n?'<span class="badge">'+n+'</span>':'')],['cal','Calibrate'],['fb','Instructor Feedback'],['q','Quarterly Meeting']];
+function isOpen(c){return c.status!=='Closed Successful'&&c.status.indexOf('Cancelled')!==0}
+function stepDue(c){var a=c.stepAt;switch(c.step){case 2:return addBD(a,2);case 3:return addBD(a,5);case 4:return addD(a,30);case 5:return c.vdate?parse(c.vdate):addBD(a,10);case 6:return addBD(a,5);default:return c.monitor?parse(c.monitor):addD(a,90)}}
+function overdue(c){return isOpen(c)&&stepDue(c)<today()}
+function casePill(s){return s==='Closed Successful'?'p-good':s==='Escalated'||s==='Finding Under Review'?'p-bad':s==='Extended'?'p-gold':'p-warn'}
+function log(c,by,txt){c.log.push({at:now(),by:by,txt:txt})}
+function ieqCur(q){return Math.round((today()-parse(q.cal))/DAY)<=365}
+function flags(){var f=[];
+ D.cases.forEach(function(c){if(overdue(c))f.push(['p-bad','Overdue',c.id+': '+STEPS[c.step]+' was due '+fmt(iso(stepDue(c)))+'.',c.id]);
+  if(isOpen(c)&&c.interim!=='No restriction')f.push(['p-warn','Duty status',c.ie+' is '+c.interim+' with '+c.id+' open. Scheduling applies the restriction.',c.id])});
+ D.ieqs.forEach(function(q){if(!ieqCur(q))f.push(['p-bad','Evaluator',q.id+' is past the annual calibration date. New observations are flagged.',null])});
+ var seen={};D.cases.filter(isOpen).forEach(function(c){c.find.forEach(function(x){var k=c.ie+x.code;if(seen[k]&&seen[k]!==c.id)f.push(['p-warn','Duplicate',c.ie+' has two open '+x.code+' cases.',c.id]);seen[k]=c.id})});
+ return f}
+function tabs(){var c=counts(),n=c.due+c.over,o=D.cases.filter(isOpen).length,T=[['how','The Program'],['board','Currency Board'+(n?'<span class="badge">'+n+'</span>':'')],['cal','Calibrate'],['cases','Remediation'+(o?'<span class="badge">'+o+'</span>':'')],['fb','Feedback'],['q','Quarterly Review']];
  document.getElementById('tabs').innerHTML=T.map(function(t){return'<button class="tab" role="tab" id="tab-'+t[0]+'" data-act="go" data-v="'+t[0]+'" aria-selected="'+(UI.view===t[0])+'">'+t[1]+'</button>'}).join('')}
-function foot(){return'<p class="foot">Concept demo for discussion. All names, findings and numbers are invented samples. This is not an approved Company form or record. No emails are sent. Do not enter real names or employee numbers. <button class="btn small" data-act="reset">'+(UI.armReset?'Tap again to confirm reset':'Reset demo')+'</button></p>'}
+function foot(){return'<p class="foot"><b>Demo mode.</b> All I/Es, findings and numbers are invented samples. This is not a controlled record. No emails or notices are sent. Do not enter real names or employee numbers. <button class="btn small" data-act="reset">'+(UI.arm?'Tap again to confirm reset':'Reset demo')+'</button></p>'}
 function vHow(){
- var L=[['Clock','Every I/E sits on a rolling 12-month cycle. Reminder at 11 months, escalation if overdue.','board','Currency Board'],
-  ['Calibrate','The IEQ grades on a tablet using the two-category form. A Not Met cannot be saved without its citation.','cal','Calibrate'],
-  ['Feedback','The instructor answers anonymously. The form mirrors the same two categories.','fb','Instructor Feedback'],
-  ['Data','Grades, citations, feedback and Exemplary flags are captured once, at the point of use.','q','Quarterly Meeting'],
-  ['Norm','IEQs meet quarterly, grade the same sample, and reconcile differences to the standard.','q','Quarterly Meeting']];
- var R=[['Fleet Standards Captain / Director of Training','Owns the program, chairs or designates the quarterly meeting, reviews aggregate data, adjudicates disputed findings against the citation, and routes standards questions into the change process.'],
-  ['IEQ','Records a Not Met only with a three-part citation, scores Instruction Quality as development, attends the quarterly meeting, and defends any finding from the standard.'],
-  ['Observed I/E','Gets a developmental debrief, sees the standard behind any Not Met, completes the anonymous feedback, and may take a disagreement to Fleet Captain review.']];
- var P=[['Phase 1','Roster, 12-month currency tracking, automatic reminders and escalation, digital two-category grading with enforced citations.'],
-  ['Phase 2','Anonymous feedback capture, currency and calibration dashboards, feedback aggregation.'],
-  ['Phase 3','Calibrator-consistency analytics, Exemplary best-practice library, quarterly report generation, and system-of-record integration.']];
- var A=['Standards updates','Group grading calibration','Instructor feedback review','Review of the quarter’s Standards findings','Category placement: gray areas','Best-practice spotlight','Actions and open items'];
- return'<section class="panel"><h2>IEQ Calibration Standardization Program</h2><p class="lead">Draft proposal for review. The program keeps every calibration anchored to a cited standard, so a pilot gets the same standard from every I/E and an I/E gets the same result from every IEQ.</p>'+
- '<h3>Three commitments</h3><ol class="commit" style="margin-top:6px"><li>Calibration is a learning event.</li><li>A Standards Not Met must be backed by a specific standard or regulation, never personal preference or technique.</li><li>All IEQs meet once per quarter to norm their grading, informed by anonymous feedback from the instructors they observed.</li></ol></section>'+
- '<section class="panel"><h2>The two categories</h2><p class="lead">The form separates SOP from technique, so one cannot be scored as the other.</p><div class="tablewrap"><table><thead><tr><th></th><th>What it measures</th><th>How it is scored</th></tr></thead><tbody>'+
- '<tr><td style="min-width:150px"><b>1. Standards</b></td><td style="min-width:230px">The objective floor: required content, SOPs, safety, records and regulatory compliance. Anything written in a manual.</td><td style="min-width:210px">Met or Not Met. Every Not Met needs a citation.</td></tr>'+
- '<tr><td><b>2. Instruction Quality</b></td><td>Teaching craft: facilitation, delivery and debrief.</td><td>4 to 1 developmental scale. Coaching, not a finding. Exemplary work is recognized here.</td></tr></tbody></table></div>'+
- '<div class="test"><q>Is there a specific SOP, Qualification Standard or regulation this behavior violated?</q><div class="split"><div><b>Yes</b><p>Standards Not Met. Record the behavior, the standard and the consequence.</p></div><div><b>No, but it is not how I would do it</b><p>Not a finding. At most, coaching under Instruction Quality.</p></div></div></div>'+
- '<p class="ref" style="margin:12px 0 0">Example: facilitating a briefing instead of reading it verbatim meets the standard. Skipping a required question does not.</p></section>'+
- '<section class="panel"><h2>How the loop runs</h2><p class="lead">The program sets the process. The app runs it, with no manual currency tracking or re-keying. Open any step to see it working.</p><ol class="steps">'+
- L.map(function(x,i){return'<li><span class="n">Step '+(i+1)+'</span><b>'+x[0]+'</b><p>'+x[1]+'</p><button class="btn small" data-act="go" data-v="'+x[2]+'">'+x[3]+'</button></li>'}).join('')+'</ol></section>'+
- '<div class="two"><section class="panel"><h2>Who does what</h2>'+R.map(function(r){return'<p style="margin:8px 0"><b>'+r[0]+':</b> '+r[1]+'</p>'}).join('')+'</section>'+
- '<section class="panel"><h2>Quarterly meeting agenda</h2><p class="lead">The goal is that all IEQs, given the same performance, arrive at the same grade.</p><ol class="commit">'+A.map(function(x){return'<li>'+x+'</li>'}).join('')+'</ol></section></div>'+
- '<section class="panel"><h2>Suggested build</h2><div class="tablewrap"><table><tbody>'+P.map(function(p){return'<tr><td style="white-space:nowrap"><b>'+p[0]+'</b></td><td style="min-width:240px">'+p[1]+'</td></tr>'}).join('')+'</tbody></table></div></section>'+
+ var L=[['Observe','An IEQ rates seven categories on a tablet. Every 2 or 1 needs behavior and a cited standard.','cal','Calibrate'],['Triage','The manager validates the evidence, classifies the cause, and sets the level and any interim control.','cases','Remediation'],['Correct','A written plan assigns actions, owners and dates. Reminders run automatically.','cases','Remediation'],['Verify','The instructor demonstrates the affected duty. Formal cases cannot close without evidence and approval.','cases','Remediation'],['Learn','Anonymous feedback and calibration data feed a quarterly review of individual and systemic trends.','q','Quarterly Review']];
+ var S=[['4 Exceeds Standard','Consistently exceeds requirements and gives a repeatable positive example.','Record strengths; consider sharing de-identified practices.'],['3 Meets Standard','Meets approved requirements.','No corrective action.'],['2 Needs Improvement','Correctable variance with no immediate compromise to safety, compliance or integrity.','Coaching or formal remediation based on risk and recurrence. Citation required.'],['1 Unsatisfactory','Material deficiency that affects or could affect safety, compliance, integrity, assessment validity or learner welfare.','Immediate review and formal remediation; consider restriction. Citation required.']];
+ var V=[['1 Coaching','Isolated, low-risk Needs Improvement','IEQ or manager'],['2 Formal remediation','Multiple findings, repeated variance, or significant standardization concern','Fleet Standards Captain'],['3 Qualification review','Unsatisfactory, failed remediation, repeated material issue, or significant safety or compliance risk','Director of Training'],['4 Removal review','Unable to meet standards after reasonable remediation, or required by policy','Authorized authority']];
+ var T=[['Identify','During observation'],['Debrief','Same day if practicable'],['Triage','Within 2 business days'],['Plan','Within 5 business days'],['Complete','Normally within 30 days'],['Verify','Within 10 business days'],['Decide','Within 5 business days'],['Monitor','At 90 days or next event']];
+ var R=[['VP of Training','Approves the program and decides qualification restrictions or removal within delegated authority.'],['Director of Training','Owns implementation, chairs the Quarterly Review, and ensures corrective actions are completed.'],['Fleet Standards Captain','Validates technical standards, assigns remediation, and evaluates systemic implications.'],['IEQ','Conducts objective observations, documents evidence, debriefs instructors, and protects confidentiality.'],['Instructor','Participates in observations and remediation, supplies evidence, comments on findings, and may request review within 5 business days.'],['Training Records and Scheduling','Maintain records and audit trail; protect observation time and apply restrictions.']];
+ return'<section class="panel"><h2>Instructor Quality Assurance Program</h2><p class="lead">A closed loop for evaluating instructors fairly, correcting deficiencies, verifying the fix, and improving the training program. Based on the draft ATC-QA-001 program, with IEQs as evaluators. Pending Director of Training review.</p>'+
+ '<div class="test"><q>Is there an approved, identifiable standard this behavior did not meet?</q><div class="split"><div><b>Yes</b><p>Rate it 2 or 1 and record the behavior, the standard and the consequence.</p></div><div><b>No, it is just not how I would do it</b><p>Not a finding. Record it as a coaching note.</p></div></div></div></section>'+
+ '<section class="panel"><h2>How the loop runs</h2><ol class="steps">'+L.map(function(x,i){return'<li><span class="n">Step '+(i+1)+'</span><b>'+x[0]+'</b><p>'+x[1]+'</p><button class="btn small" data-act="go" data-v="'+x[2]+'">'+x[3]+'</button></li>'}).join('')+'</ol></section>'+
+ '<section class="panel"><h2>Rating scale</h2><p class="lead">The overall result is the evaluator’s judgment and is never a simple average. One Unsatisfactory, multiple Needs Improvement ratings, or a repeat finding requires management review.</p><div class="tablewrap"><table><thead><tr><th>Rating</th><th>Definition</th><th>Required response</th></tr></thead><tbody>'+S.map(function(r){return'<tr><td style="min-width:150px"><b>'+r[0]+'</b></td><td style="min-width:230px">'+r[1]+'</td><td style="min-width:220px">'+r[2]+'</td></tr>'}).join('')+'</tbody></table></div></section>'+
+ '<div class="two"><section class="panel"><h2>Remediation levels</h2><div class="tablewrap"><table><thead><tr><th>Level</th><th>Typical criteria</th><th>Authority</th></tr></thead><tbody>'+V.map(function(r){return'<tr><td style="min-width:120px"><b>'+r[0]+'</b></td><td style="min-width:170px">'+r[1]+'</td><td>'+r[2]+'</td></tr>'}).join('')+'</tbody></table></div></section>'+
+ '<section class="panel"><h2>Workflow targets</h2><table><tbody>'+T.map(function(r,i){return'<tr><td><b>'+(i+1)+'. '+r[0]+'</b></td><td>'+r[1]+'</td></tr>'}).join('')+'</tbody></table></section></div>'+
+ '<section class="panel"><h2>Who does what</h2>'+R.map(function(r){return'<p style="margin:8px 0"><b>'+r[0]+':</b> '+r[1]+'</p>'}).join('')+'</section>'+
  '<section class="panel"><h2>Where it ties to the manuals</h2><div class="tablewrap"><table><tbody>'+
- '<tr><td style="min-width:240px">I/Es decide from objective criteria and are calibrated to the Performance Rating Scale</td><td class="mono" style="white-space:nowrap">AQPM 4.3.4</td></tr>'+
- '<tr><td>Facilitation standardization: teach to the content, adhere to SOPs, ask all required questions</td><td class="mono" style="white-space:nowrap">I/E AQP p.66</td></tr>'+
+ '<tr><td style="min-width:240px">Only IEQs conduct Supervised Training, QAOs and Performance Evaluations</td><td class="mono" style="white-space:nowrap">AQPM 1.5.3</td></tr>'+
+ '<tr><td>I/Es decide from objective criteria and are calibrated to the Performance Rating Scale</td><td class="mono" style="white-space:nowrap">AQPM 4.3.4</td></tr>'+
+ '<tr><td>IEQ observation goals: objective feedback, solving instructional problems, professional development</td><td class="mono" style="white-space:nowrap">AQPM 4.6.23–25</td></tr>'+
  '<tr><td>Understanding Company policy on technique and SOP</td><td class="mono" style="white-space:nowrap">AQPM 4.6.31</td></tr>'+
  '<tr><td>Standardization among IEQs</td><td class="mono" style="white-space:nowrap">AQPM 4.6.32</td></tr>'+
- '<tr><td>IEQ observation and evaluation goals: objective feedback, solving instructional problems, professional development</td><td class="mono" style="white-space:nowrap">AQPM 4.6.23–25</td></tr>'+
- '<tr><td>Inter-Rater and Referent-Rater Reliability as program data</td><td class="mono" style="white-space:nowrap">AQPM 1.6.2</td></tr>'+
- '</tbody></table></div></section>'+foot()}
+ '<tr><td>Inter-Rater and Referent-Rater Reliability as program data</td><td class="mono" style="white-space:nowrap">AQPM 1.6.2</td></tr></tbody></table></div></section>'+foot()}
 function vBoard(){var c=counts(),tot=D.roster.length,rows=D.roster.slice().sort(function(a,b){return status(a).left-status(b).left});
- return'<div class="stats">'+
- '<div class="stat" style="--stripe:var(--good)"><b>'+c.cur+'</b><span>Current</span></div>'+
- '<div class="stat" style="--stripe:var(--warn)"><b>'+c.due+'</b><span>Due within 30 days</span></div>'+
- '<div class="stat" style="--stripe:var(--bad)"><b>'+c.over+'</b><span>Overdue</span></div>'+
- '<div class="stat"><b>'+Math.round(c.cur/tot*100)+'%</b><span>Fleet currency</span></div></div>'+
- '<section class="panel"><h2>12-month calibration clock</h2><p class="lead">Nobody tracks this by hand. The app reminds at 11 months, escalates when overdue, and resets the clock when a calibration is submitted.</p>'+
- '<div class="tablewrap"><table><thead><tr><th>I/E</th><th>Class</th><th>Last</th><th>Due</th><th>Status</th><th>Automation</th><th></th></tr></thead><tbody>'+
- rows.map(function(r){var s=status(r);return'<tr><td><b>'+esc(r.id)+'</b></td><td>'+r.cls+'</td><td class="mono">'+fmt(r.last)+'</td><td class="mono">'+fmt(iso(s.due))+'</td><td><span class="pill '+s.pill+'">'+s.txt+'</span></td><td style="font-size:14px;color:var(--muted);min-width:190px">'+esc(s.rem)+'</td><td>'+(s.k==='cur'?'':'<button class="btn small primary" data-act="start" data-id="'+esc(r.id)+'">Calibrate</button>')+'</td></tr>'}).join('')+
- '</tbody></table></div></section>'+foot()}
-function blank(ie){var d={ie:ie||'',ieq:'IEQ A',obs:OBS[0],act:ACT[0],c1:{},c2:{},cite:{},ex:false,str:'',dev:''};return d}
-function allItems(C){var o=[];C.forEach(function(g){g[1].forEach(function(t){o.push(t)})});return o}
-function gateState(){var d=UI.draft,c1=allItems(CAT1),c2=allItems(CAT2),un=0,cites=0;
- c1.forEach(function(t){if(!d.c1[t])un++;if(d.c1[t]==='NM'){var x=d.cite[t]||{};if(!((x.behavior||'').trim()&&x.source&&(x.ref||'').trim()&&(x.cons||'').trim()))cites++}});
- c2.forEach(function(t){if(!d.c2[t])un++});
- var low=c2.some(function(t){return d.c2[t]==='1'||d.c2[t]==='2'})&&!d.dev.trim();
- var msg=[];if(!d.ie)msg.push('Choose the I/E');if(un)msg.push(un+' item'+(un>1?'s':'')+' need a rating');if(cites)msg.push(cites+' Not Met finding'+(cites>1?'s need':' needs')+' a full citation');
- return{ok:!msg.length,msg:msg,low:low}}
-function gateHtml(){var g=gateState();return'<p>'+(g.ok?'<span class="ok">Ready to lock and submit.</span>':'<span class="need">'+esc(g.msg.join(' · '))+'</span>')+(g.low?' A score of 1 or 2 should come with a technique in Development Focus.':'')+'</p><button class="btn primary" id="submit-cal" data-act="submit"'+(g.ok?'':' disabled')+'>Lock and submit</button>'}
-function citeHtml(t){var x=UI.draft.cite[t]||{},k=btoa(unescape(encodeURIComponent(t))).replace(/[^a-zA-Z0-9]/g,'').slice(0,24);
- return'<div class="cite"><p><b>Is there a specific SOP, Qualification Standard or regulation this behavior violated?</b> If yes, cite it. If it is just not how you would do it, it is coaching.</p>'+
- '<label class="f">1. Behavior observed<input type="text" id="b-'+k+'" data-c="behavior" data-t="'+esc(t)+'" value="'+esc(x.behavior)+'" placeholder="What the I/E did or omitted"></label>'+
- '<div class="fields"><label class="f">2. Standard<select id="s-'+k+'" data-c="source" data-t="'+esc(t)+'"><option value="">Choose a source</option>'+SOURCES.map(function(s){return'<option'+(x.source===s?' selected':'')+'>'+esc(s)+'</option>'}).join('')+'</select></label>'+
- '<label class="f">Reference<input type="text" id="r-'+k+'" data-c="ref" data-t="'+esc(t)+'" value="'+esc(x.ref)+'" placeholder="Section, page or paragraph"></label></div>'+
- '<label class="f">3. Consequence<input type="text" id="c-'+k+'" data-c="cons" data-t="'+esc(t)+'" value="'+esc(x.cons)+'" placeholder="Effect on learning, standardization or safety"></label>'+
- '<div><button class="btn small" data-act="tocoach" data-t="'+esc(t)+'">No citation: move to coaching</button></div></div>'}
+ return'<div class="stats"><div class="stat" style="--stripe:var(--good)"><b>'+c.cur+'</b><span>Current</span></div><div class="stat" style="--stripe:var(--warn)"><b>'+c.due+'</b><span>Due within 30 days</span></div><div class="stat" style="--stripe:var(--bad)"><b>'+c.over+'</b><span>Overdue</span></div><div class="stat"><b>'+Math.round(c.cur/tot*100)+'%</b><span>Observation coverage, target 95%</span></div></div>'+
+ '<section class="panel"><h2>12-month observation clock</h2><p class="lead">The app reminds at 11 months and escalates when overdue. A Routine observation or Performance Evaluation resets the clock.</p><div class="tablewrap"><table><thead><tr><th>I/E</th><th>Class</th><th>Last</th><th>Due</th><th>Status</th><th>Automation</th><th></th></tr></thead><tbody>'+
+ rows.map(function(r){var s=status(r);return'<tr><td><b>'+esc(r.id)+'</b></td><td>'+r.cls+'</td><td class="mono">'+fmt(r.last)+'</td><td class="mono">'+fmt(iso(s.due))+'</td><td><span class="pill '+s.pill+'">'+s.txt+'</span></td><td style="font-size:14px;color:var(--muted);min-width:190px">'+esc(s.rem)+'</td><td>'+(s.k==='cur'?'':'<button class="btn small primary" data-act="start" data-id="'+esc(r.id)+'">Calibrate</button>')+'</td></tr>'}).join('')+'</tbody></table></div></section>'+
+ '<section class="panel"><h2>IEQ calibration status</h2><p class="lead">Evaluators calibrate at least once a year and whenever scoring drift is identified.</p><div class="tablewrap"><table><thead><tr><th>IEQ</th><th>Last calibrated</th><th>Next due</th><th>Status</th></tr></thead><tbody>'+
+ D.ieqs.map(function(q){var ok=ieqCur(q);return'<tr><td><b>'+q.id+'</b></td><td class="mono">'+fmt(q.cal)+'</td><td class="mono">'+fmt(iso(addM(q.cal,12)))+'</td><td><span class="pill '+(ok?'p-good':'p-bad')+'">'+(ok?'Current':'Calibration due')+'</span></td></tr>'}).join('')+'</tbody></table></div></section>'+foot()}
+function blank(ie){return{ie:ie||'',ieq:'IEQ A',type:TYPES[0],act:ACT[0],env:ENV[0],rate:{},cite:{},overall:'',str:'',dev:'',com:'',esc:false}}
+function repeatOf(ie,code,skip){return D.obs.some(function(o){return o.ie===ie&&o.find.some(function(f){return f.code===code})})}
+function calType(d){return d.type==='Calibration'}
+function gate(){var d=UI.draft,un=0,cite=0,two=0,one=0,rep=false;
+ CATS.forEach(function(c){var v=d.rate[c[0]];if(!v)un++;if(v==='2')two++;if(v==='1')one++;if(v==='2'||v==='1'){var x=d.cite[c[0]]||{};if(!((x.behavior||'').trim()&&x.code&&x.source&&(x.ref||'').trim()&&(x.cons||'').trim()&&x.sev))cite++;if(!calType(d)&&x.code&&repeatOf(d.ie,x.code))rep=true}});
+ var m=[];if(!calType(d)&&!d.ie)m.push('Choose the I/E');if(un)m.push(un+' categor'+(un>1?'ies need':'y needs')+' a rating');if(cite)m.push(cite+' rating'+(cite>1?'s need':' needs')+' a full citation');if(!d.overall)m.push('Choose the overall result');
+ return{ok:!m.length,m:m,review:one>0||two>1||rep}}
+function gateHtml(){var g=gate();return'<p>'+(g.ok?'<span class="ok">Ready to lock and submit.</span>':'<span class="need">'+esc(g.m.join(' · '))+'</span>')+(g.review?' <b>Management review required.</b>':'')+'</p><button class="btn primary" id="submit-cal" data-act="submit"'+(g.ok?'':' disabled')+'>Lock and submit</button>'}
+function citeHtml(k,name){var x=UI.draft.cite[k]||{},d=UI.draft,rep=x.code&&!calType(d)&&repeatOf(d.ie,x.code);
+ return'<div class="cite"><p><b>Is there an approved, identifiable standard this behavior did not meet?</b> A rating of 2 or 1 needs a citation. If it is just not how you would do it, it is a coaching note.</p>'+
+ '<label class="f">Behavior observed<input type="text" id="b-'+k+'" data-c="behavior" data-k="'+k+'" value="'+esc(x.behavior)+'" placeholder="What the I/E did or omitted"></label>'+
+ '<div class="fields"><label class="f">Finding code<select id="fc-'+k+'" data-c="code" data-k="'+k+'"><option value="">Choose</option>'+CODES.map(function(c){return'<option value="'+c[0]+'"'+(x.code===c[0]?' selected':'')+'>'+c[0]+' '+esc(c[1])+'</option>'}).join('')+'</select></label>'+
+ '<label class="f">Standard<select id="s-'+k+'" data-c="source" data-k="'+k+'">'+opt(SOURCES,x.source,'Choose a source')+'</select></label>'+
+ '<label class="f">Reference<input type="text" id="r-'+k+'" data-c="ref" data-k="'+k+'" value="'+esc(x.ref)+'" placeholder="Section, page or paragraph"></label></div>'+
+ '<div class="fields"><label class="f">Consequence<input type="text" id="c-'+k+'" data-c="cons" data-k="'+k+'" value="'+esc(x.cons)+'" placeholder="Effect on learning, safety or compliance"></label>'+
+ '<label class="f">Severity<select id="sv-'+k+'" data-c="sev" data-k="'+k+'">'+opt(['Low','Medium','High'],x.sev,'Choose')+'</select></label>'+
+ '<label class="f">Likely cause<select id="ca-'+k+'" data-c="cause" data-k="'+k+'">'+opt(['Individual','Systemic'],x.cause||'Individual')+'</select></label></div>'+
+ (rep?'<p><span class="pill p-warn">Repeat</span> This I/E has a prior '+esc(x.code)+' finding on record.</p>':'')+
+ '<div><button class="btn small" data-act="tonote" data-k="'+k+'">No cited standard: move to coaching note</button></div></div>'}
 function vCal(){var d=UI.draft||(UI.draft=blank());
- if(UI.justDone){var j=UI.justDone;return'<section class="panel done"><h2>Calibration submitted and locked</h2><p class="lead">'+esc(j.ie)+' is reset to a fresh 12 months, due '+fmt(iso(addM(j.date,12)))+'. Nothing was re-keyed. The record, '+j.find.length+' Standards finding'+(j.find.length===1?'':'s')+', and the Instruction Quality scores are already in the quarterly data.</p><div class="row"><button class="btn primary" data-act="tofb">Open anonymous feedback request</button><button class="btn" data-act="go" data-v="board">See the Currency Board</button><button class="btn" data-act="go" data-v="q">See Quarterly Meeting</button></div></section>'+foot()}
- var o=function(a,v){return a.map(function(x){return'<option'+(x===v?' selected':'')+'>'+esc(x)+'</option>'}).join('')};
- var seg1=function(t){var v=d.c1[t];return'<div class="seg" role="group" aria-label="Rating">'+[['M','Met','met'],['NM','Not Met','nm'],['NA','N/A','']].map(function(b){return'<button class="'+b[2]+'" data-act="c1" data-t="'+esc(t)+'" data-val="'+b[0]+'" aria-pressed="'+(v===b[0])+'">'+b[1]+'</button>'}).join('')+'</div>'};
- var seg2=function(t){var v=d.c2[t];return'<div class="seg" role="group" aria-label="Score">'+['4','3','2','1','N/A'].map(function(b){return'<button data-act="c2" data-t="'+esc(t)+'" data-val="'+b+'" aria-pressed="'+(v===b)+'">'+b+'</button>'}).join('')+'</div>'};
- return'<section class="panel"><div class="row spread"><h2>Calibration Observation</h2><button class="btn small" data-act="fill">Fill sample observation</button></div>'+
- '<div class="fields"><label class="f">I/E observed<select id="f-ie" data-d="ie"><option value="">Choose</option>'+D.roster.map(function(r){return'<option'+(r.id===d.ie?' selected':'')+'>'+esc(r.id)+'</option>'}).join('')+'</select></label>'+
- '<label class="f">IEQ<select id="f-ieq" data-d="ieq">'+o(IEQS,d.ieq)+'</select></label>'+
- '<label class="f">Activity type<select id="f-obs" data-d="obs">'+o(OBS,d.obs)+'</select></label>'+
- '<label class="f">Event<select id="f-act" data-d="act">'+o(ACT,d.act)+'</select></label></div></section>'+
- '<section class="panel"><h2>Category 1: Standards</h2><p class="lead">The objective floor. Every Not Met needs the behavior, the standard and the consequence. If it is not written in a manual, it is not a finding.</p>'+
- CAT1.map(function(g){return'<div class="group">'+esc(g[0])+'</div>'+g[1].map(function(t){return'<div class="item"><div>'+esc(t)+'</div>'+seg1(t)+(d.c1[t]==='NM'?citeHtml(t):'')+'</div>'}).join('')}).join('')+'</section>'+
- '<section class="panel"><h2>Category 2: Instruction Quality</h2><p class="lead">Teaching craft, scored for development. 4 Exceeds, 3 Proficient, 2 Developing, 1 Needs support. A low score is a coaching conversation. Technique that meets the standard is never marked down.</p>'+
- CAT2.map(function(g){return'<div class="group">'+esc(g[0])+'</div>'+g[1].map(function(t){return'<div class="item"><div>'+esc(t)+'</div>'+seg2(t)+'</div>'}).join('')}).join('')+
- '<label class="check" style="margin-top:12px"><input type="checkbox" id="f-ex" data-act="ex"'+(d.ex?' checked':'')+'>Exemplary: share this session as a best practice</label>'+
- '<div class="fields"><label class="f">Strengths to reinforce<textarea id="f-str" data-d="str">'+esc(d.str)+'</textarea></label><label class="f">Development focus and techniques offered<textarea id="f-dev" data-d="dev">'+esc(d.dev)+'</textarea></label></div></section>'+
+ if(UI.done){var j=UI.done,cs=j.caseId;return'<section class="panel done"><h2>'+esc(j.obs.id)+' submitted and locked</h2><p class="lead">'+esc(j.msg)+'</p><div class="row">'+(cs?'<button class="btn primary" data-act="open" data-id="'+esc(cs)+'">Open case '+esc(cs)+'</button>':'')+(j.obs.type==='Calibration'?'<button class="btn primary" data-act="go" data-v="q">See calibrator consistency</button>':'<button class="btn'+(cs?'':' primary')+'" data-act="tofb">Send anonymous feedback request</button>')+'<button class="btn" data-act="go" data-v="board">See the Currency Board</button></div></section>'+foot()}
+ var cal=calType(d),q=D.ieqs.filter(function(x){return x.id===d.ieq})[0],seg=function(k){var v=d.rate[k];return'<div class="seg" role="group" aria-label="Rating">'+['4','3','2','1','NO'].map(function(b){return'<button class="'+(b==='2'||b==='1'?'nm':b==='3'||b==='4'?'met':'')+'" data-act="rate" data-k="'+k+'" data-val="'+b+'" aria-pressed="'+(v===b)+'">'+b+'</button>'}).join('')+'</div>'};
+ return'<section class="panel"><div class="row spread"><h2>Instructor QA Observation Record</h2><button class="btn small" data-act="fill">Fill sample observation</button></div>'+
+ '<div class="fields">'+(cal?'<label class="f">Common evidence<select id="f-ie" disabled><option>Sample session, current quarter</option></select></label>':'<label class="f">I/E observed<select id="f-ie" data-d="ie"><option value="">Choose</option>'+D.roster.map(function(r){return'<option'+(r.id===d.ie?' selected':'')+'>'+esc(r.id)+'</option>'}).join('')+'</select></label>')+
+ '<label class="f">IEQ<select id="f-ieq" data-d="ieq" data-rerender="1">'+opt(IEQS,d.ieq)+'</select></label>'+
+ '<label class="f">Observation type<select id="f-type" data-d="type" data-rerender="1">'+opt(TYPES,d.type)+'</select></label>'+
+ '<label class="f">Event<select id="f-act" data-d="act">'+opt(ACT,d.act)+'</select></label>'+
+ '<label class="f">Environment<select id="f-env" data-d="env">'+opt(ENV,d.env)+'</select></label></div>'+
+ (q&&!ieqCur(q)?'<p style="margin:10px 0 0"><span class="pill p-bad">Flag</span> '+esc(q.id)+' is past the annual calibration date.</p>':'')+
+ (cal?'<p class="notice" style="margin:10px 0 0">Calibration: each IEQ rates the same common evidence on their own. It updates evaluator agreement and does not open a case or reset an instructor’s clock.</p>':'')+'</section>'+
+ '<section class="panel"><h2>Category ratings</h2><p class="lead">4 Exceeds · 3 Meets · 2 Needs Improvement · 1 Unsatisfactory · NO Not Observed. Rate only what you adequately observed.</p>'+
+ CATS.map(function(c){var v=d.rate[c[0]];return'<div class="item"><div><b>'+esc(c[1])+'</b><div class="notice">'+esc(c[2])+'</div></div>'+seg(c[0])+(v==='2'||v==='1'?citeHtml(c[0],c[1]):'')+'</div>'}).join('')+'</section>'+
+ '<section class="panel"><h2>Overall result</h2><p class="lead">Your judgment of the most significant finding, recurrence, evidence and scope. The app does not average the ratings.</p><div class="seg overall" role="group" aria-label="Overall result">'+['4','3','2','1'].map(function(b){return'<button class="'+(b==='2'||b==='1'?'nm':'met')+'" data-act="overall" data-val="'+b+'" aria-pressed="'+(d.overall===b)+'">'+b+' '+RATE[b]+'</button>'}).join('')+'</div>'+
+ '<label class="check" style="margin-top:12px"><input type="checkbox" id="f-esc" data-act="escal"'+(d.esc?' checked':'')+'>Immediate escalation required</label>'+
+ '<div class="fields"><label class="f">Strengths observed<textarea id="f-str" data-d="str">'+esc(d.str)+'</textarea></label><label class="f">Coaching notes<textarea id="f-dev" data-d="dev">'+esc(d.dev)+'</textarea></label><label class="f">Instructor comments<textarea id="f-com" data-d="com">'+esc(d.com)+'</textarea></label></div></section>'+
  '<div class="gate" id="gate">'+gateHtml()+'</div>'+foot()}
+function submit(){var d=UI.draft;if(!gate().ok)return;var t=iso(today());
+ var find=[];CATS.forEach(function(c){var v=d.rate[c[0]];if(v==='2'||v==='1'){var x=d.cite[c[0]];find.push({code:x.code,behavior:x.behavior.trim(),source:x.source,ref:x.ref.trim(),cons:x.cons.trim(),sev:x.sev,cause:x.cause||'Individual',rec:!calType(d)&&repeatOf(d.ie,x.code),rating:v})}});
+ var o={id:'OBS-'+String(D.seq.o++).padStart(4,'0'),date:t,ie:calType(d)?'Common evidence':d.ie,ieq:d.ieq,type:d.type,act:d.act,env:d.env,rate:d.rate,overall:d.overall,find:calType(d)?[]:find,str:d.str.trim(),dev:d.dev.trim(),com:d.com.trim(),esc:d.esc};
+ D.obs.push(o);var msg='',cid=null;
+ if(calType(d)){D.norm[d.ieq]=d.rate;D.ieqs.forEach(function(q){if(q.id===d.ieq)q.cal=t});msg=d.ieq+' calibration recorded. Evaluator agreement is updated, and the annual calibration date is reset.'}
+ else{if(RESET.indexOf(d.type)>=0){D.roster.forEach(function(r){if(r.id===d.ie)r.last=t});msg=d.ie+' is reset to a fresh 12 months, due '+fmt(iso(addM(t,12)))+'. '}else msg=d.type+' recorded. The 12-month clock does not change. ';
+  if(find.length){var one=find.some(function(f){return f.rating==='1'}),two=find.filter(function(f){return f.rating==='2'}).length,rep=find.some(function(f){return f.rec}),hi=find.some(function(f){return f.sev==='High'}),lv=one||hi?3:(two>1||rep?2:1);
+   cid='QA-'+String(today().getFullYear()).slice(2)+'-'+String(D.seq.c++).padStart(3,'0');
+   var c={id:cid,obs:o.id,ie:o.ie,ieq:o.ieq,find:find,level:lv,cause:find[0].cause,root:'',interim:'No restriction',actions:[],criteria:'',method:'',verifier:'',vdate:'',vresult:'',vevidence:'',authority:'',rationale:'',comments:'',ack:false,opened:t,stepAt:t,status:'Finding Under Review',step:2,monitor:'',closed:'',log:[{at:now(),by:o.ieq,txt:'Finding recorded and instructor debriefed from '+o.id}]};
+   if(o.esc)log(c,o.ieq,'Immediate escalation flagged to the designated manager');D.cases.unshift(c);msg+='Case '+cid+' opened with suggested Level '+lv+'. Triage is due '+fmt(iso(addBD(t,2)))+'.'}
+  else msg+='No finding, so no case was opened.'}
+ save();UI.done={obs:o,msg:msg,caseId:cid};UI.fbFrom=o.ieq;UI.fbDraft=null;UI.fbDone=false;UI.draft=null;render()}
+function vCases(){var open=D.cases.filter(isOpen),f=flags(),o=open.filter(overdue).length;
+ return'<div class="stats"><div class="stat"><b>'+open.length+'</b><span>Open cases</span></div><div class="stat" style="--stripe:var(--bad)"><b>'+o+'</b><span>Overdue</span></div><div class="stat" style="--stripe:var(--warn)"><b>'+open.filter(function(c){return c.level>=2}).length+'</b><span>Level 2 or higher</span></div><div class="stat" style="--stripe:var(--gold)"><b>'+D.cases.filter(function(c){return c.cause==='Systemic'}).length+'</b><span>Systemic cases</span></div></div>'+
+ (f.length?'<section class="panel"><h2>Automated flags</h2>'+f.map(function(x){return'<p style="margin:8px 0"><span class="pill '+x[0]+'">'+x[1]+'</span> '+esc(x[2])+(x[3]?' <button class="btn small" data-act="open" data-id="'+x[3]+'">Open</button>':'')+'</p>'}).join('')+'</section>':'')+
+ '<section class="panel"><h2>Remediation cases</h2><p class="lead">Completing assigned training does not close a case. Closure requires objective verification.</p><div class="tablewrap"><table><thead><tr><th>Case</th><th>I/E</th><th>Level</th><th>Status</th><th>Step</th><th>Target</th><th></th></tr></thead><tbody>'+
+ D.cases.map(function(c){return'<tr><td class="mono" style="white-space:nowrap"><b>'+c.id+'</b></td><td style="white-space:nowrap">'+esc(c.ie)+'</td><td style="min-width:130px">'+c.level+' '+LEVELS[c.level]+'</td><td><span class="pill '+casePill(c.status)+'">'+esc(c.status)+'</span></td><td>'+STEPS[c.step]+'</td><td class="mono" style="white-space:nowrap">'+fmt(iso(stepDue(c)))+(overdue(c)?' <span class="pill p-bad">Overdue</span>':'')+'</td><td><button class="btn small" data-act="open" data-id="'+c.id+'">Open</button></td></tr>'}).join('')+'</tbody></table></div></section>'+foot()}
+function stepper(c){return'<ol class="stepper">'+STEPS.map(function(s,i){var st=i<c.step||(c.status==='Closed Successful'&&i<=c.step)?'st-done':i===c.step?'now':'';return'<li class="'+st+'">'+s+'</li>'}).join('')+'</ol>'}
+function stepForm(c){var s=c.step,rows;
+ if(c.status==='Closed Successful')return'<p class="ok">Closed '+fmt(c.closed)+' by '+esc(c.authority)+'. Check recurrence by '+fmt(c.monitor)+' or at the next event.</p>';
+ if(s===2)return'<h3>Triage</h3><p class="lead">Validate the evidence, classify the cause, and set safeguards. Target: within 2 business days.</p><div class="fields"><label class="f">Level<select id="t-lv">'+[1,2,3,4].map(function(l){return'<option value="'+l+'"'+(c.level===l?' selected':'')+'>'+l+' '+LEVELS[l]+'</option>'}).join('')+'</select></label><label class="f">Cause<select id="t-ca">'+opt(['Individual','Systemic'],c.cause)+'</select></label><label class="f">Root cause<select id="t-ro">'+opt(ROOT,c.root,'Choose')+'</select></label><label class="f">Interim duty status<select id="t-in">'+opt(INTERIM,c.interim)+'</select></label></div><div class="row" style="margin-top:12px"><button class="btn primary" data-act="c-triage">Complete triage</button><button class="btn small" data-act="c-sample">Fill sample</button></div>';
+ if(s===3)return'<h3>Plan</h3><p class="lead">Assign actions, owners, dates and how the fix will be verified. Target: within 5 business days.</p>'+actList(c,false)+'<div class="fields"><label class="f">Action<input type="text" id="p-t" placeholder="What will be done"></label><label class="f">Owner<input type="text" id="p-o" placeholder="Role or I/E number"></label></div><div style="margin:8px 0 12px"><button class="btn small" data-act="c-add">Add action</button></div><div class="fields"><label class="f">Observable success criteria<input type="text" id="p-cr" value="'+esc(c.criteria)+'"></label><label class="f">Verification method<input type="text" id="p-me" value="'+esc(c.method)+'"></label></div><div class="row" style="margin-top:12px"><button class="btn primary" data-act="c-plan">Issue plan</button><button class="btn small" data-act="c-sample">Fill sample</button></div>';
+ if(s===4){var ind=IEQS.filter(function(x){return x!==c.ieq||c.level===1});return'<h3>Complete</h3><p class="lead">The instructor completes the actions and provides evidence. Target: normally within 30 days.</p>'+actList(c,true)+(c.status==='Extended'?'<p class="notice">Extended: '+esc(c.rationale)+'</p>':'')+'<div class="fields"><label class="f">Verifier (independent of the original evaluator when practicable)<select id="v-by">'+opt(ind,c.verifier,'Choose')+'</select></label></div><div class="row" style="margin-top:12px"><button class="btn primary" data-act="c-sched">Schedule verification</button></div>'}
+ if(s===5)return'<h3>Verify</h3><p class="lead">'+esc(c.verifier)+' evaluates the affected performance against the criteria: '+esc(c.criteria||'as planned')+'.</p><div class="fields"><label class="f">Result<select id="v-re">'+opt(['Successful','Extend','Unsuccessful'],c.vresult,'Choose')+'</select></label><label class="f">Evidence<input type="text" id="v-ev" value="'+esc(c.vevidence)+'" placeholder="What was observed"></label></div><div class="row" style="margin-top:12px"><button class="btn primary" data-act="c-verify">Record verification</button><button class="btn small" data-act="c-sample">Fill sample</button></div>';
+ if(s===6)return'<h3>Decide</h3><p class="lead">Verification result: <b>'+esc(c.vresult)+'</b>. Evidence: '+esc(c.vevidence)+'</p><div class="fields"><label class="f">Approving authority<select id="d-au">'+opt(AUTH[c.level],c.authority,'Choose')+'</select></label><label class="f">Rationale if extending or escalating<input type="text" id="d-ra" value="'+esc(c.rationale)+'"></label></div><div class="row" style="margin-top:12px"><button class="btn primary" data-act="c-close"'+(c.vresult==='Successful'?'':' disabled')+'>Close as successful</button><button class="btn" data-act="c-extend">Extend</button><button class="btn" data-act="c-esc">Escalate</button></div>';
+ return''}
+function actList(c,check){if(!c.actions.length)return'<p class="notice">No actions yet.</p>';return'<table style="margin-bottom:12px"><tbody>'+c.actions.map(function(a,i){return'<tr><td style="width:44px">'+(check?'<input type="checkbox" aria-label="Done" data-act="c-done" data-i="'+i+'"'+(a.done?' checked':'')+' style="width:22px;height:22px">':(i+1))+'</td><td>'+esc(a.t)+'</td><td>'+esc(a.o)+'</td><td class="mono" style="white-space:nowrap">'+fmt(a.d)+'</td></tr>'}).join('')+'</tbody></table>'}
+function vCase(){var c=D.cases.filter(function(x){return x.id===UI.cid})[0];if(!c){UI.cid=null;return vCases()}
+ return'<div><button class="btn small" data-act="back">All cases</button></div><section class="panel"><div class="row spread"><h2>Case '+c.id+'</h2><span class="pill '+casePill(c.status)+'">'+esc(c.status)+'</span></div><p class="lead">'+esc(c.ie)+' · Level '+c.level+' '+LEVELS[c.level]+' · '+esc(c.cause)+' · '+esc(c.interim)+' · Opened '+fmt(c.opened)+' from '+esc(c.obs)+'</p>'+stepper(c)+'</section>'+
+ '<section class="panel"><h2>Findings</h2><div class="tablewrap"><table><thead><tr><th>Code</th><th>Behavior</th><th>Standard</th><th>Consequence</th><th>Severity</th></tr></thead><tbody>'+c.find.map(function(f){return'<tr><td class="mono">'+esc(f.code)+(f.rec?' <span class="pill p-warn">Repeat</span>':'')+'</td><td style="min-width:180px">'+esc(f.behavior)+'</td><td style="min-width:170px">'+esc(f.source)+': '+esc(f.ref)+'</td><td style="min-width:160px">'+esc(f.cons)+'</td><td>'+esc(f.sev)+'</td></tr>'}).join('')+'</tbody></table></div></section>'+
+ '<section class="panel">'+stepForm(c)+'<p class="need" id="case-err" role="alert" style="margin:10px 0 0"></p></section>'+
+ '<section class="panel"><h2>Instructor comments</h2><p class="lead">Acknowledgement confirms receipt and does not imply agreement. The instructor may request management review within 5 business days of the finding.</p><label class="f">Comments<textarea id="i-co">'+esc(c.comments)+'</textarea></label><div class="row" style="margin-top:10px"><button class="btn small" data-act="c-comment">Save comment</button><button class="btn small" data-act="c-ack"'+(c.ack?' disabled':'')+'>'+(c.ack?'Acknowledged':'Acknowledge receipt')+'</button><button class="btn small" data-act="c-review">Request management review</button></div></section>'+
+ '<section class="panel"><h2>Audit trail</h2><div class="tablewrap"><table><tbody>'+c.log.slice().reverse().map(function(l){return'<tr><td class="mono" style="white-space:nowrap">'+esc(l.at)+'</td><td style="white-space:nowrap">'+esc(l.by)+'</td><td style="min-width:200px">'+esc(l.txt)+'</td></tr>'}).join('')+'</tbody></table></div></section>'+foot()}
+function cErr(s){var e=document.getElementById('case-err');if(e)e.textContent=s}
+function val(id){var e=document.getElementById(id);return e?e.value.trim():''}
+function caseAct(a,b){var c=D.cases.filter(function(x){return x.id===UI.cid})[0];if(!c)return;var t=iso(today()),A=c.authority||'Fleet Standards Captain';
+ if(a==='c-sample'){if(c.step===2){document.getElementById('t-ro').value=ROOT[3]}else if(c.step===3){document.getElementById('p-t').value='Targeted standardization session with an IEQ';document.getElementById('p-o').value=c.ie;document.getElementById('p-cr').value='Affected duty performed to standard on the next event.';document.getElementById('p-me').value='Follow-up observation'}else if(c.step===5){document.getElementById('v-re').value='Successful';document.getElementById('v-ev').value='Follow-up observation rated 3 in the affected category.'}return}
+ if(a==='c-triage'){if(!val('t-ro'))return cErr('Choose the root cause before completing triage.');c.level=+val('t-lv');c.cause=val('t-ca');c.root=val('t-ro');c.interim=val('t-in');c.status=c.level===1?'Coaching Open':'Formal Remediation Open';c.step=3;c.stepAt=t;log(c,'Fleet Standards Captain','Triage complete: Level '+c.level+', '+c.cause+', root cause '+c.root+', '+c.interim)}
+ else if(a==='c-add'){if(!val('p-t')||!val('p-o'))return cErr('Enter the action and its owner.');c.criteria=val('p-cr');c.method=val('p-me');c.actions.push({t:val('p-t'),o:val('p-o'),d:iso(addD(t,30)),done:false});log(c,'Fleet Standards Captain','Action added: '+val('p-t'))}
+ else if(a==='c-plan'){if(val('p-t')&&val('p-o')){c.actions.push({t:val('p-t'),o:val('p-o'),d:iso(addD(t,30)),done:false})}c.criteria=val('p-cr');c.method=val('p-me');if(!c.actions.length)return cErr('Add at least one action with an owner.');if(!c.criteria||!c.method)return cErr('Enter the success criteria and verification method.');c.step=4;c.stepAt=t;log(c,'Fleet Standards Captain','Plan issued to '+c.ie)}
+ else if(a==='c-done'){c.actions[+b.dataset.i].done=b.checked;log(c,c.ie,(b.checked?'Completed: ':'Reopened: ')+c.actions[+b.dataset.i].t);save();return}
+ else if(a==='c-sched'){if(c.actions.some(function(x){return!x.done}))return cErr('Complete every action before scheduling verification.');if(!val('v-by'))return cErr('Choose a verifier.');c.verifier=val('v-by');c.vdate=iso(addBD(t,10));c.status='Verification Scheduled';c.step=5;c.stepAt=t;log(c,'Fleet Standards Captain','Verification scheduled with '+c.verifier)}
+ else if(a==='c-verify'){if(!val('v-re'))return cErr('Choose the verification result.');if(!val('v-ev'))return cErr('Verification evidence is required. Attendance or elapsed time alone does not support closure.');c.vresult=val('v-re');c.vevidence=val('v-ev');c.step=6;c.stepAt=t;c.first=c.first==null?(c.vresult==='Successful'):c.first;log(c,c.verifier,'Verification: '+c.vresult+'. '+c.vevidence)}
+ else if(a==='c-close'){if(!val('d-au'))return cErr('Choose the approving authority.');c.authority=val('d-au');c.status='Closed Successful';c.step=7;c.closed=t;c.stepAt=t;c.monitor=iso(addD(t,90));log(c,c.authority,'Closed successful. Monitoring until '+fmt(c.monitor))}
+ else if(a==='c-extend'){if(!val('d-au')||!val('d-ra'))return cErr('An extension needs the authority and a rationale.');c.authority=val('d-au');c.rationale=val('d-ra');c.status='Extended';c.step=4;c.stepAt=t;c.vresult='';c.vevidence='';log(c,c.authority,'Extended: '+c.rationale)}
+ else if(a==='c-esc'){if(!val('d-ra'))return cErr('An escalation needs a rationale.');c.rationale=val('d-ra');c.level=Math.min(4,c.level+1);c.status='Escalated';c.step=2;c.stepAt=t;c.vresult='';c.vevidence='';log(c,'Fleet Standards Captain','Escalated to Level '+c.level+': '+c.rationale)}
+ else if(a==='c-comment'){c.comments=val('i-co');log(c,c.ie,'Instructor comment saved')}
+ else if(a==='c-ack'){c.ack=true;log(c,c.ie,'Instructor acknowledged receipt')}
+ else if(a==='c-review'){c.comments=val('i-co')||c.comments;log(c,c.ie,'Instructor requested management review')}
+ save();render(true)}
 function fbKeys(){var k=[];FB.forEach(function(g){g[1].forEach(function(q){k.push(q)})});return k}
 function vFb(){
- if(UI.fbDone)return'<section class="panel done"><h2>Feedback stored without your identity</h2><p class="lead">It is counted only by calibrator and quarter, so a single response cannot be traced to you. It now appears in the aggregate on the Quarterly Meeting tab.</p><button class="btn primary" data-act="go" data-v="q">See Quarterly Meeting</button></section>'+foot();
- var f=UI.fbDraft||(UI.fbDraft={ieq:UI.fbFrom||'IEQ A',a:{}});
- var answered=fbKeys().filter(function(q){return f.a[q[0]]}).length,total=fbKeys().length;
- return'<section class="panel"><div class="row spread"><h2>Post-Calibration Feedback</h2><button class="btn small" data-act="fbfill">Fill sample responses</button></div><p class="lead">Anonymous. No name or employee number is collected, and responses appear only in aggregate at the quarterly meeting.</p>'+
- '<div class="fields"><label class="f">Calibrating IEQ<select id="fb-ieq" data-fb="ieq">'+IEQS.map(function(x){return'<option'+(x===f.ieq?' selected':'')+'>'+x+'</option>'}).join('')+'</select></label></div>'+
+ if(UI.fbDone)return'<section class="panel done"><h2>Feedback stored without your identity</h2><p class="lead">It is counted only by IEQ and quarter, so a single response cannot be traced to you. It appears only in aggregate at the Quarterly Review.</p><button class="btn primary" data-act="go" data-v="q">See Quarterly Review</button></section>'+foot();
+ var f=UI.fbDraft||(UI.fbDraft={ieq:UI.fbFrom||'IEQ A',a:{}}),ans=fbKeys().filter(function(q){return f.a[q[0]]}).length,tot=fbKeys().length;
+ return'<section class="panel"><div class="row spread"><h2>Post-Calibration Feedback</h2><button class="btn small" data-act="fbfill">Fill sample responses</button></div><p class="lead">Anonymous. No name or employee number is collected, and responses appear only in aggregate.</p><div class="fields"><label class="f">Observing IEQ<select id="fb-ieq" data-fb="ieq">'+opt(IEQS,f.ieq)+'</select></label></div>'+
  FB.map(function(g){return'<div class="group">'+esc(g[0])+'</div>'+g[1].map(function(q){return'<div class="item"><div>'+esc(q[1])+'</div><div class="seg likert" role="group" aria-label="Agreement">'+LIK.map(function(l){return'<button data-act="fba" data-k="'+q[0]+'" data-val="'+l+'" aria-pressed="'+(f.a[q[0]]===l)+'">'+l+'</button>'}).join('')+'</div></div>'}).join('')}).join('')+
- '<p class="notice">SA Strongly agree · A Agree · N Neutral · D Disagree · SD Strongly disagree · NA Not applicable</p></section>'+
- '<div class="gate"><p>'+(answered===total?'<span class="ok">Ready to submit.</span>':'<span class="need">'+(total-answered)+' statements left</span>')+'</p><button class="btn primary" data-act="fbsubmit"'+(answered===total?'':' disabled')+'>Submit anonymously</button></div>'+foot()}
+ '<p class="notice">SA Strongly agree · A Agree · N Neutral · D Disagree · SD Strongly disagree · NA Not applicable</p></section><div class="gate"><p>'+(ans===tot?'<span class="ok">Ready to submit.</span>':'<span class="need">'+(tot-ans)+' statements left</span>')+'</p><button class="btn primary" data-act="fbsubmit"'+(ans===tot?'':' disabled')+'>Submit anonymously</button></div>'+foot()}
 function agree(list,k){var y=0,n=0;list.forEach(function(r){var v=r.a[k];if(!v||v==='NA')return;n++;if(v==='SA'||v==='A')y++});return n?{p:Math.round(y/n*100),n:n}:{p:0,n:0}}
-function vQ(){var t=today(),qs=qStart(t),ev=D.events.filter(function(e){return parse(e.date)>=qs}),find=[];ev.forEach(function(e){e.find.forEach(function(f){find.push({e:e,f:f})})});
- var cited=find.length,ex=ev.filter(function(e){return e.ex}),by={};find.forEach(function(x){by[x.f.source]=(by[x.f.source]||0)+1});
- var maxS=Math.max.apply(null,Object.keys(by).map(function(k){return by[k]}).concat([1]));
- var iq={};ev.forEach(function(e){(iq[e.ieq]=iq[e.ieq]||[]).push(e.iq)});
- var norm=[['Required content and questions (Cat 1)',['Met','Met','Not Met','Met','Met']],['Facilitation (Cat 2)',[3,3,2,3,4]],['Scenario management (Cat 2)',[3,3,3,3,3]],['Crew-centered debrief (Cat 2)',[4,3,1,3,3]],['Techniques offered (Cat 2)',[3,3,2,3,3]]];
- var cal=function(v){return typeof v==='number'};
- var fbq=[['tied','Each Not Met was tied to a standard'],['notpref','No finding was really just technique'],['dev','Feedback was developmental'],['tech','Technique that met standard was left alone'],['help','Calibration will help me improve']];
- var drift=IEQS.map(function(q){var l=D.fb.filter(function(r){return r.ieq===q}),a=agree(l,'tech'),b=agree(l,'notpref');return{q:q,a:a,b:b,n:l.length}});
- return'<div class="row spread"><h2 style="font-size:28px;font-weight:700">'+qName(t)+' standards meeting</h2><span class="notice">Builds itself from submitted records</span></div>'+
- '<div class="stats"><div class="stat"><b>'+ev.length+'</b><span>Calibrations this quarter</span></div><div class="stat" style="--stripe:var(--bad)"><b>'+find.length+'</b><span>Standards findings</span></div><div class="stat" style="--stripe:var(--good)"><b>'+(cited?'100%':'n/a')+'</b><span>Findings with full citation</span></div><div class="stat" style="--stripe:var(--gold)"><b>'+ex.length+'</b><span>Exemplary sessions</span></div></div>'+
- '<section class="panel"><h2>Calibrator consistency</h2><p class="lead">Five IEQs graded the same sample session on their own. A wide spread is what the meeting norms against the standard.</p><div class="tablewrap"><table><thead><tr><th>Item</th>'+IEQS.map(function(q){return'<th style="text-align:center">'+q.replace('IEQ ','')+'</th>'}).join('')+'<th style="text-align:center">Spread</th></tr></thead><tbody>'+
- norm.map(function(r){var v=r[1],sp=cal(v[0])?Math.max.apply(null,v)-Math.min.apply(null,v):(new Set(v).size>1?'Split':'Agree'),hot=cal(v[0])?sp>=2:sp==='Split';var m=cal(v[0])?null:'Met';return'<tr><td style="min-width:210px">'+esc(r[0])+'</td>'+v.map(function(x){var o=cal(x)?Math.abs(x-3)>=2:x!==m;return'<td class="cell'+(o?' hot':'')+'">'+esc(x)+'</td>'}).join('')+'<td class="cell">'+(hot?'<span class="pill p-warn">'+sp+'</span>':sp)+'</td></tr>'}).join('')+'</tbody></table></div></section>'+
- '<div class="two"><section class="panel"><h2>What instructors reported</h2><p class="lead">Percent agree or strongly agree. '+D.fb.length+' anonymous responses, last 12 months.</p>'+
- fbq.map(function(q){var a=agree(D.fb,q[0]);return'<div class="bar"><div class="lab">'+esc(q[1])+'</div><div class="track"><div class="fill" style="width:'+a.p+'%"></div></div><span class="mono">'+a.p+'%</span></div>'}).join('')+'</section>'+
- '<section class="panel"><h2>Drift signal by IEQ</h2><p class="lead">Percent who agreed technique was left alone. Below 70% goes on the meeting agenda as a norming item, not a finding.</p>'+
- drift.map(function(d){var w=d.a.p<70;return'<div class="bar"><div class="lab">'+d.q+' · '+d.n+' responses</div><div class="track"><div class="fill'+(w?' warn':'')+'" style="width:'+d.a.p+'%"></div></div><span class="mono">'+d.a.p+'%</span></div>'}).join('')+'</section></div>'+
- '<div class="two"><section class="panel"><h2>Findings by standard</h2>'+(find.length?Object.keys(by).sort(function(a,b){return by[b]-by[a]}).map(function(k){return'<div class="bar"><div class="lab">'+esc(k)+'</div><div class="track"><div class="fill" style="width:'+Math.round(by[k]/maxS*100)+'%"></div></div><span class="mono">'+by[k]+'</span></div>'}).join(''):'<p class="lead">No findings this quarter.</p>')+'</section>'+
- '<section class="panel"><h2>Best practices to share</h2>'+(ex.length?ex.map(function(e){return'<p style="margin:8px 0"><span class="pill p-gold">Exemplary</span> <b>'+esc(e.act)+'</b> · '+esc(e.note||'Flagged by '+e.ieq+'.')+'</p>'}).join(''):'<p class="lead">None flagged yet.</p>')+'</section></div>'+
- '<section class="panel"><h2>Findings log</h2><p class="lead">Every finding carries its citation and is locked on submit, so each one can be defended or corrected at the meeting.</p><div class="tablewrap"><table><thead><tr><th>Date</th><th>I/E</th><th>IEQ</th><th>Event</th><th>Behavior</th><th>Standard</th><th>Consequence</th></tr></thead><tbody>'+
- (find.length?find.slice().reverse().map(function(x){return'<tr><td class="mono" style="white-space:nowrap">'+fmt(x.e.date)+'</td><td style="white-space:nowrap">'+esc(x.e.ie)+'</td><td style="white-space:nowrap">'+esc(x.e.ieq)+'</td><td>'+esc(x.e.act)+'</td><td style="min-width:190px">'+esc(x.f.behavior)+'</td><td style="min-width:170px">'+esc(x.f.source)+': '+esc(x.f.ref)+'</td><td style="min-width:170px">'+esc(x.f.cons)+'</td></tr>'}).join(''):'<tr><td colspan="7">No findings this quarter.</td></tr>')+'</tbody></table></div></section>'+foot()}
+function median(a){var s=a.slice().sort(function(x,y){return x-y}),m=Math.floor(s.length/2);return s.length?(s.length%2?s[m]:(s[m-1]+s[m])/2):0}
+function evalAgree(){var ok=0,n=0;CATS.forEach(function(c){var v=IEQS.map(function(q){return D.norm[q]&&+D.norm[q][c[0]]}).filter(function(x){return x}),m=median(v);v.forEach(function(x){n++;if(x===m)ok++})});return n?Math.round(ok/n*100):0}
+function metrics(){var c=counts(),tot=D.roster.length,qs=qStart(today()),ev=D.obs.filter(function(o){return parse(o.date)>=qs&&o.type!=='Calibration'}),rated=ev.filter(function(o){return o.overall}),acc=rated.filter(function(o){return+o.overall>=3}).length,b=D.base,cl=D.cases.filter(function(x){return x.closed&&x.first!=null}),dn=b.due+cl.length,ont=b.onTime+cl.length,fv=b.first+cl.length,fo=b.firstOk+cl.filter(function(x){return x.first}).length,days=b.days.concat(cl.map(function(x){return Math.round((parse(x.closed)-parse(x.opened))/DAY)})),all=D.cases.length,sys=D.cases.filter(function(x){return x.cause==='Systemic'}).length,ag=evalAgree(),rep=Math.round(b.repeat/(b.closed+cl.length)*100);
+ return[['Observation coverage',Math.round(c.cur/tot*100)+'%','95% or more',c.cur/tot>=.95],['Acceptable observations',Math.round(acc/Math.max(1,rated.length)*100)+'%','Trend, never a quota',null],['On-time remediation',Math.round(ont/dn*100)+'%','95% or more',ont/dn>=.95],['First verification success',Math.round(fo/fv*100)+'%','90% or more',fo/fv>=.9],['Repeat finding rate',rep+'%','Less than 5%',rep<5],['Closure cycle time',median(days)+' days','Trend by level',null],['Evaluator agreement',ag+'%','90% or more',ag>=90],['Systemic finding rate',Math.round(sys/Math.max(1,all)*100)+'%','Trend by program',null],['Documentation accuracy',D.doc+'%','98% or more',D.doc>=98]]}
+function risk(){var out={Green:0,Yellow:[],Red:[]};D.roster.forEach(function(r){var open=D.cases.filter(function(c){return isOpen(c)&&c.ie===r.id});if(open.some(function(c){return c.level>=2}))out.Red.push(r.id);else if(open.length)out.Yellow.push(r.id);else out.Green++});return out}
+function vQ(){var t=today(),qs=qStart(t),F=[];D.obs.filter(function(o){return parse(o.date)>=qs}).forEach(function(o){o.find.forEach(function(f){F.push({o:o,f:f})})});
+ var by={};F.forEach(function(x){by[x.f.code]=(by[x.f.code]||0)+1});var mx=Math.max.apply(null,Object.keys(by).map(function(k){return by[k]}).concat([1]));
+ var ex=D.obs.filter(function(o){return parse(o.date)>=qs&&o.overall==='4'}),open=D.cases.filter(function(c){return isOpen(c)&&c.level>=2}),r=risk();
+ var fbq=[['tied','Each 2 or 1 was tied to a standard'],['notpref','No finding was really just technique'],['dev','Feedback was developmental'],['tech','Technique that met standard was left alone'],['help','Calibration will help me improve']];
+ var drift=IEQS.map(function(q){var l=D.fb.filter(function(x){return x.ieq===q});return{q:q,a:agree(l,'tech'),n:l.length}});
+ var AG=['Confirm previous decisions and actions','Review observation coverage, overdue activity and evaluator capacity','Review open Level 2 through 4 cases and interim controls','Review recurrence, verification effectiveness and closure time','Analyze trends by fleet, program, location, event, evaluator and category','Determine whether patterns are individual, systemic or unresolved','Assign systemic actions, owners, measures and due dates','Review data quality, access, retention and audit exceptions','Approve decisions and set the next meeting date'];
+ return'<div class="row spread"><h2 style="font-size:28px;font-weight:700">'+qName(t)+' Instructor Quality Review</h2><span class="notice">Chaired by the Director of Training</span></div>'+
+ '<section class="panel"><h2>Program metrics</h2><p class="lead">Initial targets, to be validated after baseline data. Metrics must not encourage underreporting or inflated ratings.</p><div class="tablewrap"><table><thead><tr><th>Metric</th><th>Result</th><th>Target</th><th>Status</th></tr></thead><tbody>'+
+ metrics().map(function(m){return'<tr><td style="min-width:190px">'+m[0]+'</td><td class="mono">'+m[1]+'</td><td>'+m[2]+'</td><td>'+(m[3]===null?'<span class="notice">Trend</span>':'<span class="pill '+(m[3]?'p-good':'p-warn')+'">'+(m[3]?'Met':'Review')+'</span>')+'</td></tr>'}).join('')+'</tbody></table></div></section>'+
+ '<section class="panel"><h2>Calibrator consistency</h2><p class="lead">IEQs rated the same common evidence on their own. A wide spread is what the group norms against the standard.</p><div class="tablewrap"><table><thead><tr><th>Category</th>'+IEQS.map(function(q){return'<th style="text-align:center">'+q.replace('IEQ ','')+'</th>'}).join('')+'<th style="text-align:center">Spread</th></tr></thead><tbody>'+
+ CATS.map(function(c){var v=IEQS.map(function(q){return +(D.norm[q]||{})[c[0]]||0}),nz=v.filter(function(x){return x}),m=median(nz),sp=nz.length?Math.max.apply(null,nz)-Math.min.apply(null,nz):0;return'<tr><td style="min-width:190px">'+esc(c[1])+'</td>'+v.map(function(x){return'<td class="cell'+(x&&Math.abs(x-m)>=2?' hot':'')+'">'+(x||'NO')+'</td>'}).join('')+'<td class="cell">'+(sp>=2?'<span class="pill p-warn">'+sp+'</span>':sp)+'</td></tr>'}).join('')+'</tbody></table></div></section>'+
+ '<section class="panel"><h2>Open Level 2 through 4 cases</h2>'+(open.length?'<div class="tablewrap"><table><thead><tr><th>Case</th><th>I/E</th><th>Level</th><th>Status</th><th>Interim</th><th></th></tr></thead><tbody>'+open.map(function(c){return'<tr><td class="mono"><b>'+c.id+'</b></td><td style="white-space:nowrap">'+esc(c.ie)+'</td><td>'+c.level+'</td><td><span class="pill '+casePill(c.status)+'">'+esc(c.status)+'</span></td><td>'+esc(c.interim)+'</td><td><button class="btn small" data-act="open" data-id="'+c.id+'">Open</button></td></tr>'}).join('')+'</tbody></table></div>':'<p class="lead">None open.</p>')+'</section>'+
+ '<div class="two"><section class="panel"><h2>Findings by code</h2>'+(F.length?Object.keys(by).sort(function(a,b){return by[b]-by[a]}).map(function(k){return'<div class="bar"><div class="lab">'+k+'</div><div class="track"><div class="fill" style="width:'+Math.round(by[k]/mx*100)+'%"></div></div><span class="mono">'+by[k]+'</span></div>'}).join(''):'<p class="lead">No findings this quarter.</p>')+'</section>'+
+ '<section class="panel"><h2>Risk indicator</h2><p class="lead">Prompts a review only. It never establishes deficiency or discipline. Thresholds need approval.</p><div class="row"><span class="pill p-good">Green '+r.Green+'</span><span class="pill p-warn">Yellow '+r.Yellow.length+'</span><span class="pill p-bad">Red '+r.Red.length+'</span></div><p class="notice">Yellow: '+esc(r.Yellow.join(', ')||'none')+'<br>Red: '+esc(r.Red.join(', ')||'none')+'</p></section></div>'+
+ '<div class="two"><section class="panel"><h2>What instructors reported</h2><p class="lead">Percent agree or strongly agree. '+D.fb.length+' anonymous responses.</p>'+fbq.map(function(q){var a=agree(D.fb,q[0]);return'<div class="bar"><div class="lab">'+esc(q[1])+'</div><div class="track"><div class="fill" style="width:'+a.p+'%"></div></div><span class="mono">'+a.p+'%</span></div>'}).join('')+'</section>'+
+ '<section class="panel"><h2>Drift signal by IEQ</h2><p class="lead">Percent who agreed technique was left alone. Below 70% goes on the agenda as a norming item.</p>'+drift.map(function(d){var w=d.a.p<70;return'<div class="bar"><div class="lab">'+d.q+' · '+d.n+' responses</div><div class="track"><div class="fill'+(w?' warn':'')+'" style="width:'+d.a.p+'%"></div></div><span class="mono">'+d.a.p+'%</span></div>'}).join('')+'</section></div>'+
+ '<div class="two"><section class="panel"><h2>Strengths to share</h2>'+(ex.length?ex.map(function(o){return'<p style="margin:8px 0"><span class="pill p-gold">Exceeds</span> <b>'+esc(o.act)+'</b> · '+esc(o.str||'Flagged by '+o.ieq+'.')+'</p>'}).join(''):'<p class="lead">None flagged yet.</p>')+'</section>'+
+ '<section class="panel"><h2>Agenda</h2><ol class="commit">'+AG.map(function(x){return'<li>'+x+'</li>'}).join('')+'</ol></section></div>'+foot()}
 function render(keep){var y=window.scrollY;tabs();var m=document.getElementById('main');
- m.innerHTML=UI.view==='how'?vHow():UI.view==='board'?vBoard():UI.view==='cal'?vCal():UI.view==='fb'?vFb():vQ();
+ m.innerHTML=UI.view==='how'?vHow():UI.view==='board'?vBoard():UI.view==='cal'?vCal():UI.view==='cases'?(UI.cid?vCase():vCases()):UI.view==='fb'?vFb():vQ();
  window.scrollTo(0,keep?y:0)}
-function refreshGate(){var g=document.getElementById('gate');if(!g)return;var t=document.createElement('div');t.innerHTML=gateHtml();
- var p=g.querySelector('p'),btn=g.querySelector('#submit-cal'),nb=t.querySelector('#submit-cal');
- p.innerHTML=t.querySelector('p').innerHTML;btn.disabled=nb.disabled}
-function submitCal(){var d=UI.draft;if(!gateState().ok)return;
- var nums=allItems(CAT2).map(function(t){return d.c2[t]}).filter(function(v){return v!=='N/A'}).map(Number);
- var e={id:'E'+Date.now(),date:iso(today()),ie:d.ie,ieq:d.ieq,obs:d.obs,act:d.act,ex:d.ex,note:d.str.trim(),iq:nums.length?nums.reduce(function(a,b){return a+b},0)/nums.length:0,
-  find:allItems(CAT1).filter(function(t){return d.c1[t]==='NM'}).map(function(t){var c=d.cite[t];return{item:t,behavior:c.behavior.trim(),source:c.source,ref:c.ref.trim(),cons:c.cons.trim()}})};
- D.events.push(e);D.roster.forEach(function(r){if(r.id===d.ie)r.last=e.date});save();
- UI.justDone=e;UI.fbFrom=e.ieq;UI.fbDraft=null;UI.fbDone=false;UI.draft=null;render()}
+function refreshGate(){var g=document.getElementById('gate');if(!g)return;var t=document.createElement('div');t.innerHTML=gateHtml();g.querySelector('p').innerHTML=t.querySelector('p').innerHTML;g.querySelector('#submit-cal').disabled=t.querySelector('#submit-cal').disabled}
 document.addEventListener('click',function(ev){var b=ev.target.closest('[data-act]');if(!b||b.disabled)return;var a=b.dataset.act,d=UI.draft;
- if(a!=='reset'&&UI.armReset){UI.armReset=false}
- if(a==='go'){if(b.dataset.v==='cal'&&UI.justDone){UI.justDone=null}if(b.dataset.v==='fb'&&UI.fbDone){UI.fbDone=false;UI.fbDraft=null}UI.view=b.dataset.v;render()}
- else if(a==='start'){UI.justDone=null;UI.draft=blank(b.dataset.id);UI.view='cal';render()}
- else if(a==='fill'){allItems(CAT1).forEach(function(t){if(d.c1[t]!=='NM')d.c1[t]='M'});allItems(CAT2).forEach(function(t){d.c2[t]='3'});render(true)}
- else if(a==='c1'){d.c1[b.dataset.t]=b.dataset.val;render(true);if(b.dataset.val==='NM'){var cp=document.querySelector('[data-t="'+b.dataset.t.replace(/"/g,'\\"')+'"][data-c=behavior]');if(cp){cp.closest('.cite').scrollIntoView({block:'center'})}}}
- else if(a==='c2'){d.c2[b.dataset.t]=b.dataset.val;render(true)}
- else if(a==='tocoach'){var t=b.dataset.t,c=d.cite[t]||{};d.c1[t]='M';if((c.behavior||'').trim())d.dev=(d.dev?d.dev+'\n':'')+c.behavior.trim();delete d.cite[t];render(true)}
- else if(a==='submit')submitCal();
- else if(a==='tofb'){UI.justDone=null;UI.view='fb';render()}
- else if(a==='fbfill'){var f=UI.fbDraft;fbKeys().forEach(function(q){f.a[q[0]]='A'});render(true)}
+ if(a!=='reset')UI.arm=false;
+ if(a==='go'){if(b.dataset.v==='cal')UI.done=null;if(b.dataset.v==='fb'&&UI.fbDone){UI.fbDone=false;UI.fbDraft=null}if(b.dataset.v==='cases')UI.cid=null;UI.view=b.dataset.v;render()}
+ else if(a==='start'){UI.done=null;UI.draft=blank(b.dataset.id);UI.view='cal';render()}
+ else if(a==='open'){UI.cid=b.dataset.id;UI.view='cases';render()}
+ else if(a==='back'){UI.cid=null;render()}
+ else if(a==='fill'){CATS.forEach(function(c){if(d.rate[c[0]]!=='2'&&d.rate[c[0]]!=='1')d.rate[c[0]]='3'});if(!d.overall)d.overall='3';render(true)}
+ else if(a==='rate'){var k=b.dataset.k;d.rate[k]=b.dataset.val;if((b.dataset.val==='2'||b.dataset.val==='1')&&!(d.cite[k]&&d.cite[k].code))(d.cite[k]=d.cite[k]||{}).code=k;render(true);if(b.dataset.val==='2'||b.dataset.val==='1'){var e=document.getElementById('b-'+k);if(e)e.closest('.cite').scrollIntoView({block:'center'})}}
+ else if(a==='overall'){d.overall=b.dataset.val;render(true)}
+ else if(a==='tonote'){var k2=b.dataset.k,c=d.cite[k2]||{};d.rate[k2]='3';if((c.behavior||'').trim())d.dev=(d.dev?d.dev+'\n':'')+c.behavior.trim();delete d.cite[k2];render(true)}
+ else if(a==='escal'){d.esc=b.checked}
+ else if(a==='submit')submit();
+ else if(a==='tofb'){UI.done=null;UI.view='fb';render()}
+ else if(a==='fbfill'){fbKeys().forEach(function(q){UI.fbDraft.a[q[0]]='A'});render(true)}
  else if(a==='fba'){UI.fbDraft.a[b.dataset.k]=b.dataset.val;render(true)}
  else if(a==='fbsubmit'){D.fb.push({ieq:UI.fbDraft.ieq,a:UI.fbDraft.a});save();UI.fbDraft=null;UI.fbDone=true;render()}
- else if(a==='ex'){d.ex=b.checked}
- else if(a==='reset'){if(!UI.armReset){UI.armReset=true;render(true)}else{UI.armReset=false;D=seed();save();UI.draft=null;UI.justDone=null;UI.fbDraft=null;UI.fbDone=false;UI.view='board';render()}}
+ else if(a.indexOf('c-')===0)caseAct(a,b);
+ else if(a==='reset'){if(!UI.arm){UI.arm=true;render(true)}else{UI.arm=false;D=seed();save();UI.draft=null;UI.done=null;UI.fbDraft=null;UI.fbDone=false;UI.cid=null;UI.view='how';render()}}
 });
 function onField(ev){var el=ev.target,d=UI.draft;
- if(el.dataset.d&&d){d[el.dataset.d]=el.value;refreshGate()}
- else if(el.dataset.c&&d){var t=el.dataset.t;(d.cite[t]=d.cite[t]||{})[el.dataset.c]=el.value;refreshGate()}
+ if(el.dataset.d&&d){d[el.dataset.d]=el.value;if(el.dataset.rerender&&ev.type==='change')render(true);else refreshGate()}
+ else if(el.dataset.c&&d){(d.cite[el.dataset.k]=d.cite[el.dataset.k]||{})[el.dataset.c]=el.value;refreshGate()}
  else if(el.dataset.fb&&UI.fbDraft){UI.fbDraft[el.dataset.fb]=el.value}}
 document.addEventListener('input',onField);document.addEventListener('change',onField);
 render();
