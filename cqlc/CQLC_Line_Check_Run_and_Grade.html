@@ -497,8 +497,9 @@ function(t){t.__bidiEngine__=t.prototype.__bidiEngine__=function(t){var n,r,i,a,
 
 <script>
 "use strict";
-const VERSION="2026.11.05.1", VERSION_DATE="2026-11-05";
+const VERSION="2026.11.05.2", VERSION_DATE="2026-11-05";
 const CHANGELOG=[
+ {v:"2026.11.05.2",date:"2026-11-05",notes:["Observing Evaluator / FAA Inspector: 👁 button in the toolbar for the observer's name and ID (leave blank if none). It prints on the PDF."]},
  {v:"2026.11.05.1",date:"2026-11-05",notes:["Debriefing completed: a 🗣 Debrief button in the toolbar records that the debrief was done (with the time). It prints on the PDF, is saved with the session and clears with New."]},
  {v:"2026.10.30.1",date:"2026-10-30",notes:["Updated to the 2026-10-25 CQLC paper grader: new ‘Course Evaluation’ briefing item (Training Course Evaluation survey by QR code, category Line Check); an Incomplete line check is now rescheduled per AQPM 4.3.7; the footer now reads ‘AQPM 4.3, Atlas Air FOM, and the I/E AQP Manual, or FOTM as applicable’."]},
  {v:"2026.10.26.1",date:"2026-10-26",notes:["Works without internet: the first time you open this app with internet it saves a copy on the iPad, so it still opens and grades with no Wi-Fi (sim building outage, in flight). With internet it always loads the newest version first, exactly as before; if the connection is slow it opens the saved copy and offers ‘Update now’ when the newer version finishes downloading. An ‘Offline’ tag shows at the bottom-left when there is no internet. Briefing slides still need internet."]},
@@ -910,6 +911,7 @@ try{ if(window.LOGO&&window.LOGO.svg) document.getElementById("logo").src=window
 try{ const s=localStorage.getItem(AUTOSAVE_KEY); if(s) S=Object.assign(blank(),JSON.parse(s)); }catch(e){}
 render();
 </script>
+<script>window.DBF_OBSERVER=true;</script>
 <style id="dbf-css">
 .dbf-btn{border:1px solid #c9d2de;border-radius:9px;padding:8px 12px;font:800 14px -apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;background:#fff;color:#33404f;cursor:pointer}
 .dbf-btn.done{background:#e6f6ec;border-color:#9dd3b0;color:#14713c}
