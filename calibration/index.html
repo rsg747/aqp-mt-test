@@ -137,7 +137,7 @@ td.hot{background:var(--warn-soft)}
 <script>
 (function(){
 'use strict';
-var KEY='calibration-manager-demo-v3',DAY=864e5;
+var KEY='calibration-manager-demo-v4',DAY=864e5;
 var CATS=[
  ['TK','Technical knowledge','Accurate, current explanations; applies procedures, limitations and references; resolves uncertainty.'],
  ['IT','Instructional technique','States objectives, organizes content, checks understanding, adapts within curriculum limits, and engages learners.'],
@@ -147,13 +147,14 @@ var CATS=[
  ['CRM','Professionalism and CRM','Maintains respect, psychological safety, communication, inclusion, integrity, and CRM integration.'],
  ['DOC','Documentation and compliance','Completes records accurately and on time; verifies required qualifications; protects sensitive information.']];
 var CODES=[['TK','Technical knowledge'],['IT','Instructional technique'],['STD','Standardization'],['TNG','Training management'],['GRD','Grading and assessment'],['DBR','Debriefing'],['CRM','CRM and human factors'],['DOC','Documentation'],['COM','Compliance'],['CUR','Curriculum or courseware'],['SYS','System or equipment'],['PRO','Professional conduct']];
-var SOURCES=['I/E AQP Manual','AQPM Qualification Standards','AQPM (other chapter)','FAA-approved courseware','FOM','FCOM','FCTM','QRH / ECL','FOTM','14 CFR Part 121 / Subpart Y','14 CFR Part 121 / Subparts N and O'];
+var SOURCES=['I/E AQP Manual','AQPM Qualification Standards','AQPM (other chapter)','FAA-approved courseware','FOM','FCOM','FCTM','QRH / ECL','FOTM Version 18','14 CFR Part 121 / Subpart Y','14 CFR Part 121 / Subparts N and O'];
 var RATE={'4':'Exceeds Standard','3':'Meets Standard','2':'Needs Improvement','1':'Unsatisfactory'};
 var TYPES=['Routine (QAO)','Targeted (QAO)','Follow-up (QAO)','Performance Evaluation','Supervised Training','Calibration'];
 var RESET=['Routine (QAO)','Performance Evaluation','Routine'];
 var TYPES_NO=['Routine','Targeted','Follow-up','Supervised Training','Calibration'];
-var ACT_NO=['PC','PCWU','PT','RLOFT','FFSU','Line Check','Ground School'];
+var ACT_NO=['PC','PCWU','PT','RLOFT','FFSU','Line Check','OE','Ground School'];
 var PROGS=['AQP','N&O'];
+var ROLES=['IEQ','APD','Proficiency Check Pilot','FAA inspector'];
 function typesFor(p){return p==='N&O'?TYPES_NO:TYPES}
 function actsFor(p){return p==='N&O'?ACT_NO:ACT}
 var ACT=['CQMV.1','CQMT1.1','CQMT2.1','CQLOE.1','CQLC','CQILT.1'];
@@ -185,8 +186,10 @@ function seed(){
  var t=today(),q=qStart(t),el=Math.max(1,Math.floor((t-q)/DAY)),inQ=function(f){return iso(new Date(q.getTime()+Math.floor(el*f)*DAY+36e5))},ago=function(n){return iso(new Date(t.getTime()-n*DAY+36e5))};
  var kinds=['SCP','SI','SCP','SI','SCP','LCP','SI','SCP','SI','SCP','SI','LCP','SCP','SI','SCP','SI'];
  var last=[inQ(.05),inQ(.15),inQ(.3),inQ(.45),inQ(.6),inQ(.75),inQ(.9),ago(125),ago(160),ago(190),ago(250),ago(300),ago(342),ago(354),ago(381),ago(401)];
- var roster=last.map(function(d,i){return{id:'I/E '+String(i+1).padStart(2,'0'),cls:kinds[i],last:d}});
- var ieqs=[{id:'IEQ A',cal:ago(62)},{id:'IEQ B',cal:ago(118)},{id:'IEQ C',cal:ago(388)},{id:'IEQ D',cal:ago(40)},{id:'IEQ E',cal:ago(205)}];
+ var mDue=[20,15,10,6,2,1,0,-1,12,8,18,3,-2,22,5,14],evs=[14,22,9,31,18,11,8,26,7,19,12,10,16,21,6,13],segA=[40,100,200,300,120,0,60,345,150,80,215,0,10,395,270,175],mtgA=[45,45,130,45,130,45,130,240,45,130,300,45,240,45,392,130];
+ var mon=function(k){return iso(new Date(t.getFullYear(),t.getMonth()+k,1))};
+ var roster=last.map(function(d,i){return{id:'I/E '+String(i+1).padStart(2,'0'),cls:kinds[i],last:d,biDue:mon(mDue[i]),ev:evs[i],seg:kinds[i]==='LCP'?'':ago(segA[i]),mtg:ago(mtgA[i])}});
+ var ieqs=[{id:'IEQ A',cal:ago(62),apd:true},{id:'IEQ B',cal:ago(118),apd:false},{id:'IEQ C',cal:ago(388),apd:false},{id:'IEQ D',cal:ago(40),apd:true},{id:'IEQ E',cal:ago(205),apd:false}];
  var R=function(o){var r={};CATS.forEach(function(c){r[c[0]]=o&&o[c[0]]||'3'});return r};
  var F=function(code,behavior,source,ref,cons,sev,cause){return{code:code,behavior:behavior,source:source,ref:ref,cons:cons,sev:sev,cause:cause||'Individual',rec:false}};
  var f2=F('STD','Skipped two required questions in the briefing.','I/E AQP Manual','Facilitation Checklist, p.66','Crew missed required content.','Low');
@@ -231,6 +234,17 @@ function status(r){var due=addM(r.last,12),left=Math.round((due-today())/DAY);
  if(left<0)return{k:'over',left:left,due:due,txt:'Overdue',pill:'p-bad',rem:'Escalated to manager, '+(-left)+' days past due'};
  if(left<=30)return{k:'due',left:left,due:due,txt:'Due soon',pill:'p-warn',rem:'11-month reminder sent '+fmt(iso(addM(r.last,11)))};
  return{k:'cur',left:left,due:due,txt:'Current',pill:'p-good',rem:'Next reminder '+fmt(iso(addM(r.last,11)))}}
+function monthEnd(d,add){return new Date(d.getFullYear(),d.getMonth()+1+(add||0),0)}
+function winStatus(due,win){var t=today(),first=new Date(due.getFullYear(),due.getMonth()-(win?1:0),1),end=monthEnd(due,win?1:0);
+ if(t>end)return{k:'over',txt:'Overdue',pill:'p-bad',end:end};
+ if(t>=first)return{k:'due',txt:win&&t>monthEnd(due)?'Last month of window':win?'In window':'Due this month',pill:'p-warn',end:end};
+ return{k:'cur',txt:'Current',pill:'p-good',end:end}}
+function isCP(r){return r.cls!=='SI'}
+function bi(r){return winStatus(parse(r.biDue),isCP(r))}
+function segS(r){return r.seg?winStatus(addM(r.seg,12),true):null}
+function mtgS(r){var due=addM(r.mtg,12),left=Math.round((due-today())/DAY);return left<0?{k:'over',txt:'Overdue',pill:'p-bad',due:due}:left<=30?{k:'due',txt:'Due soon',pill:'p-warn',due:due}:{k:'cur',txt:'Current',pill:'p-good',due:due}}
+function monYr(d){return d.toLocaleDateString('en-US',{month:'short',year:'numeric'})}
+function attn(r){var b=bi(r),g=segS(r);return status(r).k!=='cur'||b.k!=='cur'||(g&&g.k!=='cur')||mtgS(r).k!=='cur'||r.ev<8}
 function counts(){var c={cur:0,due:0,over:0};D.roster.forEach(function(r){c[status(r).k]++});return c}
 function isOpen(c){return c.status!=='Closed Successful'&&c.status.indexOf('Cancelled')!==0}
 function stepDue(c){var a=c.stepAt;switch(c.step){case 2:return addBD(a,2);case 3:return addBD(a,5);case 4:return addD(a,30);case 5:return c.vdate?parse(c.vdate):addBD(a,10);case 6:return addBD(a,5);default:return c.monitor?parse(c.monitor):addD(a,90)}}
@@ -238,30 +252,47 @@ function overdue(c){return isOpen(c)&&stepDue(c)<today()}
 function casePill(s){return s==='Closed Successful'?'p-good':s==='Escalated'||s==='Finding Under Review'?'p-bad':s==='Extended'?'p-gold':'p-warn'}
 function log(c,by,txt){c.log.push({at:now(),by:by,txt:txt})}
 function ieqCur(q){return Math.round((today()-parse(q.cal))/DAY)<=365}
+function credit24(d){var r=D.roster.filter(function(x){return x.id===d.ie})[0];if(!r||calType(d))return null;
+ var q=D.ieqs.filter(function(x){return x.id===d.ieq})[0],role=d.role||'IEQ',ieqApd=role==='IEQ'&&q&&q.apd,cp=isCP(r),aqp=d.prog==='AQP',no=function(w){return{ok:false,why:w}};
+ if(role==='IEQ'&&!ieqApd)return no(d.ieq+' is not marked as a current APD, so this does not count toward the 24-month observation.');
+ if(cp&&role==='Proficiency Check Pilot')return no('A check pilot’s biennial demonstration goes to an FAA inspector or APD.');
+ if(aqp&&d.type!=='Performance Evaluation')return no('Under AQP, only a Performance Evaluation can count toward the 24-month observation.');
+ if(!aqp&&['Routine','Targeted','Follow-up'].indexOf(d.type)<0)return no('This observation type does not count toward the 24-month observation.');
+ if(r.cls==='SCP'&&(aqp?['CQMV.1','CQLOE.1'].indexOf(d.act)<0:d.act!=='PC'))return no(aqp?'An SCP must be evaluated conducting an AQP MV or LOE.':'A Proficiency Check Pilot must be observed conducting a proficiency check.');
+ if(r.cls==='LCP'&&(aqp?d.act!=='CQLC':['Line Check','OE'].indexOf(d.act)<0))return no(aqp?'An LCP must be evaluated conducting a Line Check.':'A Line Check Pilot must be observed conducting a line check or OE.');
+ if(r.cls==='SI'&&d.env!=='Full flight simulator')return no('A Flight Instructor - FSTD demonstrates instruction in a full flight simulator.');
+ if(d.overall==='2'||d.overall==='1')return no('An overall result of 2 or 1 is not a satisfactory demonstration.');
+ return{ok:true,why:'This will count toward the 24-month observation.'}}
+function nextBi(r){var t=today(),due=parse(r.biDue),s=bi(r),b=(s.k==='due')?due:new Date(t.getFullYear(),t.getMonth(),1);return iso(new Date(b.getFullYear(),b.getMonth()+24,1))}
 function flags(){var f=[];
  D.cases.forEach(function(c){if(overdue(c))f.push(['p-bad','Overdue',c.id+': '+STEPS[c.step]+' was due '+fmt(iso(stepDue(c)))+'.',c.id]);
   if(isOpen(c)&&c.interim!=='No restriction')f.push(['p-warn','Duty status',c.ie+' is '+c.interim+' with '+c.id+' open. Scheduling applies the restriction.',c.id])});
  D.ieqs.forEach(function(q){if(!ieqCur(q))f.push(['p-bad','Evaluator',q.id+' is past the annual calibration date. New observations are flagged.',null])});
+ D.roster.forEach(function(r){if(bi(r).k==='over')f.push(['p-bad','24-month',r.id+' is past the 24-month observation due in '+monYr(parse(r.biDue))+'.',null])});
  var seen={};D.cases.filter(isOpen).forEach(function(c){c.find.forEach(function(x){var k=c.ie+x.code;if(seen[k]&&seen[k]!==c.id)f.push(['p-warn','Duplicate',c.ie+' has two open '+x.code+' cases.',c.id]);seen[k]=c.id})});
  return f}
-function tabs(){var c=counts(),n=c.due+c.over,o=D.cases.filter(isOpen).length,T=[['how','The Program'],['board','Currency Board'+(n?'<span class="badge">'+n+'</span>':'')],['cal','Calibrate'],['cases','Remediation'+(o?'<span class="badge">'+o+'</span>':'')],['fb','Feedback'],['q','Quarterly Review']];
+function tabs(){var n=D.roster.filter(attn).length,o=D.cases.filter(isOpen).length,T=[['how','The Program'],['board','Currency Board'+(n?'<span class="badge">'+n+'</span>':'')],['cal','Calibrate'],['cases','Remediation'+(o?'<span class="badge">'+o+'</span>':'')],['fb','Feedback'],['q','Quarterly Review']];
  document.getElementById('tabs').innerHTML=T.map(function(t){return'<button class="tab" role="tab" id="tab-'+t[0]+'" data-act="go" data-v="'+t[0]+'" aria-selected="'+(UI.view===t[0])+'">'+t[1]+'</button>'}).join('')}
 function foot(){return'<p class="foot"><b>Demo mode.</b> All I/Es, findings and numbers are invented samples. This is not a controlled record. No emails or notices are sent. Do not enter real names or employee numbers. <button class="btn small" data-act="reset">'+(UI.arm?'Tap again to confirm reset':'Reset demo')+'</button></p>'}
 function vHow(){
- var L=[['Observe','An IEQ rates seven categories on a tablet. Every 2 or 1 needs behavior and a cited standard.','cal','Calibrate'],['Triage','The manager validates the evidence, classifies the cause, and sets the level and any interim control.','cases','Remediation'],['Correct','A written plan assigns actions, owners and dates. Reminders run automatically.','cases','Remediation'],['Verify','The instructor demonstrates the affected duty. Formal cases cannot close without evidence and approval.','cases','Remediation'],['Learn','Anonymous feedback and calibration data feed a quarterly review of individual and systemic trends.','q','Quarterly Review']];
+ var L=[['Observe','The evaluator rates seven categories on a tablet. Every 2 or 1 needs behavior and a cited standard.','cal','Calibrate'],['Triage','The manager validates the evidence, classifies the cause, and sets the level and any interim control.','cases','Remediation'],['Correct','A written plan assigns actions, owners and dates. Reminders run automatically.','cases','Remediation'],['Verify','The instructor demonstrates the affected duty. Formal cases cannot close without evidence and approval.','cases','Remediation'],['Learn','Anonymous feedback and calibration data feed a quarterly review of individual and systemic trends.','q','Quarterly Review']];
  var S=[['4 Exceeds Standard','Consistently exceeds requirements and gives a repeatable positive example.','Record strengths; consider sharing de-identified practices.'],['3 Meets Standard','Meets approved requirements.','No corrective action.'],['2 Needs Improvement','Correctable variance with no immediate compromise to safety, compliance or integrity.','Coaching or formal remediation based on risk and recurrence. Citation required.'],['1 Unsatisfactory','Material deficiency that affects or could affect safety, compliance, integrity, assessment validity or learner welfare.','Immediate review and formal remediation; consider restriction. Citation required.']];
  var V=[['1 Coaching','Isolated, low-risk Needs Improvement','IEQ or manager'],['2 Formal remediation','Multiple findings, repeated variance, or significant standardization concern','Fleet Standards Captain'],['3 Qualification review','Unsatisfactory, failed remediation, repeated material issue, or significant safety or compliance risk','Director of Training'],['4 Removal review','Unable to meet standards after reasonable remediation, or required by policy','Authorized authority']];
  var T=[['Identify','During observation'],['Debrief','Same day if practicable'],['Triage','Within 2 business days'],['Plan','Within 5 business days'],['Complete','Normally within 30 days'],['Verify','Within 10 business days'],['Decide','Within 5 business days'],['Monitor','At 90 days or next event']];
- var R=[['VP of Training','Approves the program and decides qualification restrictions or removal within delegated authority.'],['Director of Training','Owns implementation, chairs the Quarterly Review, and ensures corrective actions are completed.'],['Fleet Standards Captain','Validates technical standards, assigns remediation, and evaluates systemic implications.'],['IEQ','Conducts objective observations, documents evidence, debriefs instructors, and protects confidentiality.'],['Instructor','Participates in observations and remediation, supplies evidence, comments on findings, and may request review within 5 business days.'],['Training Records and Scheduling','Maintain records and audit trail; protect observation time and apply restrictions.']];
- return'<section class="panel"><h2>Instructor Quality Assurance Program</h2><p class="lead">A closed loop for evaluating instructors fairly, correcting deficiencies, verifying the fix, and improving the training program. Based on the draft ATC-QA-001 program, with IEQs as evaluators. It covers instruction under both AQP and Subparts N and O until the full transition to AQP. Pending Director of Training review.</p>'+
+ var R=[['VP of Training','Approves the program and decides qualification restrictions or removal within delegated authority.'],['Director of Training','Owns implementation, chairs the Quarterly Review, and ensures corrective actions are completed.'],['Fleet Standards Captain','Validates technical standards, assigns remediation, and evaluates systemic implications.'],['IEQ','Under AQP, conducts objective observations, documents evidence, debriefs instructors, and protects confidentiality.'],['Instructor','Participates in observations and remediation, supplies evidence, comments on findings, and may request review within 5 business days.'],['Training Records and Scheduling','Maintain records and audit trail; protect observation time and apply restrictions.']];
+ return'<section class="panel"><h2>Instructor Quality Assurance Program</h2><p class="lead">A closed loop for evaluating instructors fairly, correcting deficiencies, verifying the fix, and improving the training program. Based on the draft ATC-QA-001 program, with IEQs as evaluators under AQP. It covers instruction under both AQP and Subparts N and O until the full transition to AQP. Pending Director of Training review.</p>'+
  '<div class="test"><q>Is there an approved, identifiable standard this behavior did not meet?</q><div class="split"><div><b>Yes</b><p>Rate it 2 or 1 and record the behavior, the standard and the consequence.</p></div><div><b>No, it is just not how I would do it</b><p>Not a finding. Record it as a coaching note.</p></div></div></div></section>'+
  '<section class="panel"><h2>How the loop runs</h2><ol class="steps">'+L.map(function(x,i){return'<li><span class="n">Step '+(i+1)+'</span><b>'+x[0]+'</b><p>'+x[1]+'</p><button class="btn small" data-act="go" data-v="'+x[2]+'">'+x[3]+'</button></li>'}).join('')+'</ol></section>'+
  '<section class="panel"><h2>Rating scale</h2><p class="lead">The overall result is the evaluator’s judgment and is never a simple average. One Unsatisfactory, multiple Needs Improvement ratings, or a repeat finding requires management review.</p><div class="tablewrap"><table><thead><tr><th>Rating</th><th>Definition</th><th>Required response</th></tr></thead><tbody>'+S.map(function(r){return'<tr><td style="min-width:150px"><b>'+r[0]+'</b></td><td style="min-width:230px">'+r[1]+'</td><td style="min-width:220px">'+r[2]+'</td></tr>'}).join('')+'</tbody></table></div></section>'+
  '<div class="two"><section class="panel"><h2>Remediation levels</h2><div class="tablewrap"><table><thead><tr><th>Level</th><th>Typical criteria</th><th>Authority</th></tr></thead><tbody>'+V.map(function(r){return'<tr><td style="min-width:120px"><b>'+r[0]+'</b></td><td style="min-width:170px">'+r[1]+'</td><td>'+r[2]+'</td></tr>'}).join('')+'</tbody></table></div></section>'+
  '<section class="panel"><h2>Workflow targets</h2><table><tbody>'+T.map(function(r,i){return'<tr><td><b>'+(i+1)+'. '+r[0]+'</b></td><td>'+r[1]+'</td></tr>'}).join('')+'</tbody></table></section></div>'+
  '<section class="panel"><h2>Who does what</h2>'+R.map(function(r){return'<p style="margin:8px 0"><b>'+r[0]+':</b> '+r[1]+'</p>'}).join('')+'</section>'+
- '<section class="panel"><h2>Where it ties to the manuals</h2><div class="tablewrap"><table><tbody>'+
- '<tr><td style="min-width:240px">I/E qualification under Subparts N and O</td><td class="mono" style="white-space:nowrap">FOTM 1.10</td></tr>'+
+ '<section class="panel"><h2>Where it ties to the manuals</h2><p class="lead">Current as of FOTM Version 18 (14 AUG 26), AQPM v3 (03 JUN 26) and I/E AQP Manual (Rev 6/16/2026).</p><div class="tablewrap"><table><tbody>'+
+ '<tr><td style="min-width:240px">Check pilot initial and 24-month observations, the one-month window, and AQP credit when the IEQ is also a current APD</td><td class="mono" style="white-space:nowrap">FOTM 1.10.4</td></tr>'+
+ '<tr><td>Proficiency Check Pilot biennial demonstration to an FAA inspector or APD</td><td class="mono" style="white-space:nowrap">FOTM 1.10.5</td></tr>'+
+ '<tr><td>Line Check Pilot biennial demonstration to an FAA inspector or APD</td><td class="mono" style="white-space:nowrap">FOTM 1.10.7</td></tr>'+
+ '<tr><td>Flight Instructor - FSTD biennial demonstration to an FAA inspector, Proficiency Check Pilot - FSTD or APD; 8 events; flight segments or Line Observation Program; annual standards meeting</td><td class="mono" style="white-space:nowrap">FOTM 1.10.11</td></tr>'+
+ '<tr><td>Simulator instructor and check pilot observations and monthly audits</td><td class="mono" style="white-space:nowrap">FOTM 1.11.5</td></tr>'+
  '<tr><td>Under AQP, only IEQs conduct Supervised Training, QAOs and Performance Evaluations</td><td class="mono" style="white-space:nowrap">AQPM 1.5.3</td></tr>'+
  '<tr><td>I/Es decide from objective criteria and are calibrated to the Performance Rating Scale</td><td class="mono" style="white-space:nowrap">AQPM 4.3.4</td></tr>'+
  '<tr><td>IEQ observation goals: objective feedback, solving instructional problems, professional development</td><td class="mono" style="white-space:nowrap">AQPM 4.6.23–25</td></tr>'+
@@ -270,11 +301,15 @@ function vHow(){
  '<tr><td>Inter-Rater and Referent-Rater Reliability as program data</td><td class="mono" style="white-space:nowrap">AQPM 1.6.2</td></tr></tbody></table></div></section>'+foot()}
 function vBoard(){var c=counts(),tot=D.roster.length,rows=D.roster.slice().sort(function(a,b){return status(a).left-status(b).left});
  return'<div class="stats"><div class="stat" style="--stripe:var(--good)"><b>'+c.cur+'</b><span>Current</span></div><div class="stat" style="--stripe:var(--warn)"><b>'+c.due+'</b><span>Due within 30 days</span></div><div class="stat" style="--stripe:var(--bad)"><b>'+c.over+'</b><span>Overdue</span></div><div class="stat"><b>'+Math.round(c.cur/tot*100)+'%</b><span>Observation coverage, target 95%</span></div></div>'+
- '<section class="panel"><h2>12-month observation clock</h2><p class="lead">The app reminds at 11 months and escalates when overdue. A Routine observation or Performance Evaluation resets the clock.</p><div class="tablewrap"><table><thead><tr><th>I/E</th><th>Class</th><th>Last</th><th>Due</th><th>Status</th><th>Automation</th><th></th></tr></thead><tbody>'+
+ '<section class="panel"><h2>12-month observation clock</h2><p class="lead">Program rule from draft ATC-QA-001. The app reminds at 11 months and escalates when overdue. A Routine observation or Performance Evaluation resets the clock.</p><div class="tablewrap"><table><thead><tr><th>I/E</th><th>Class</th><th>Last</th><th>Due</th><th>Status</th><th>Automation</th><th></th></tr></thead><tbody>'+
  rows.map(function(r){var s=status(r);return'<tr><td><b>'+esc(r.id)+'</b></td><td>'+r.cls+'</td><td class="mono">'+fmt(r.last)+'</td><td class="mono">'+fmt(iso(s.due))+'</td><td><span class="pill '+s.pill+'">'+s.txt+'</span></td><td style="font-size:14px;color:var(--muted);min-width:190px">'+esc(s.rem)+'</td><td>'+(s.k==='cur'?'':'<button class="btn small primary" data-act="start" data-id="'+esc(r.id)+'">Calibrate</button>')+'</td></tr>'}).join('')+'</tbody></table></div></section>'+
- '<section class="panel"><h2>IEQ calibration status</h2><p class="lead">Evaluators calibrate at least once a year and whenever scoring drift is identified.</p><div class="tablewrap"><table><thead><tr><th>IEQ</th><th>Last calibrated</th><th>Next due</th><th>Status</th></tr></thead><tbody>'+
- D.ieqs.map(function(q){var ok=ieqCur(q);return'<tr><td><b>'+q.id+'</b></td><td class="mono">'+fmt(q.cal)+'</td><td class="mono">'+fmt(iso(addM(q.cal,12)))+'</td><td><span class="pill '+(ok?'p-good':'p-bad')+'">'+(ok?'Current':'Calibration due')+'</span></td></tr>'}).join('')+'</tbody></table></div></section>'+foot()}
-function blank(ie){return{prog:'AQP',ie:ie||'',ieq:'IEQ A',type:TYPES[0],act:ACT[0],env:ENV[0],rate:{},cite:{},overall:'',str:'',dev:'',com:'',esc:false}}
+ vCur()+
+ '<section class="panel"><h2>IEQ calibration status</h2><p class="lead">Evaluators calibrate at least once a year and whenever scoring drift is identified. An IEQ’s AQP Performance Evaluation counts toward a check pilot’s 24-month observation only if that IEQ is also a current APD (FOTM 1.10.4).</p><div class="tablewrap"><table><thead><tr><th>IEQ</th><th>Last calibrated</th><th>Next due</th><th>Status</th><th>Current APD</th></tr></thead><tbody>'+
+ D.ieqs.map(function(q){var ok=ieqCur(q);return'<tr><td><b>'+q.id+'</b></td><td class="mono">'+fmt(q.cal)+'</td><td class="mono">'+fmt(iso(addM(q.cal,12)))+'</td><td><span class="pill '+(ok?'p-good':'p-bad')+'">'+(ok?'Current':'Calibration due')+'</span></td><td><label class="check" style="min-height:0"><input type="checkbox" id="apd-'+q.id.slice(-1)+'" data-act="apd" data-id="'+q.id+'" aria-label="'+q.id+' is a current APD"'+(q.apd?' checked':'')+'>'+(q.apd?'Yes':'No')+'</label></td></tr>'}).join('')+'</tbody></table></div></section>'+foot()}
+function vCur(){var rank=function(r){var a=[bi(r),mtgS(r)];if(r.seg)a.push(segS(r));return a.some(function(x){return x.k==='over'})?0:r.ev<8?1:a.some(function(x){return x.k==='due'})?2:3},rows=D.roster.slice().sort(function(a,b){return rank(a)-rank(b)}),cell=function(a,b){return'<td style="white-space:nowrap"><span class="mono">'+a+'</span><br><span class="pill '+b.pill+'">'+b.txt+'</span></td>'};
+ return'<section class="panel"><h2>24-month observation and currency</h2><p class="lead">FOTM Version 18 minimums, tracked alongside the program clock. Check pilots may complete the 24-month observation in the month before or after the due month. Flight segments or the Line Observation Program have the same window.</p><div class="tablewrap"><table><thead><tr><th>I/E</th><th>Class</th><th>24-month due</th><th>Events, 12 mo (min 8)</th><th>Segments or LOP due</th><th>Standards meeting due</th><th></th></tr></thead><tbody>'+
+ rows.map(function(r){var b=bi(r),g=segS(r),m=mtgS(r),low=r.ev<8;return'<tr><td style="white-space:nowrap"><b>'+esc(r.id)+'</b></td><td>'+r.cls+'</td>'+cell(monYr(parse(r.biDue)),b)+'<td style="white-space:nowrap"><span class="mono">'+r.ev+'</span><br><span class="pill '+(low?'p-bad':'p-good')+'">'+(low?'Below 8':'Met')+'</span></td>'+(g?cell(monYr(addM(r.seg,12)),g):'<td class="notice">Not listed for LCP</td>')+cell(fmt(iso(m.due)),m)+'<td>'+(b.k==='cur'?'':'<button class="btn small primary" data-act="start" data-id="'+esc(r.id)+'">Observe</button>')+'</td></tr>'}).join('')+'</tbody></table></div><p class="notice" style="margin-top:10px">Below 8 events: see Re-establishing Recency of Experience, FOTM 1.1.5.</p></section>'}
+function blank(ie){return{prog:'AQP',role:'IEQ',ie:ie||'',ieq:'IEQ A',type:TYPES[0],act:ACT[0],env:ENV[0],rate:{},cite:{},overall:'',str:'',dev:'',com:'',esc:false}}
 function repeatOf(ie,code,skip){return D.obs.some(function(o){return o.ie===ie&&o.find.some(function(f){return f.code===code})})}
 function calType(d){return d.type==='Calibration'}
 function gate(){var d=UI.draft,un=0,cite=0,two=0,one=0,rep=false;
@@ -294,15 +329,15 @@ function citeHtml(k,name){var x=UI.draft.cite[k]||{},d=UI.draft,rep=x.code&&!cal
  (rep?'<p><span class="pill p-warn">Repeat</span> This I/E has a prior '+esc(x.code)+' finding on record.</p>':'')+
  '<div><button class="btn small" data-act="tonote" data-k="'+k+'">No cited standard: move to coaching note</button></div></div>'}
 function vCal(){var d=UI.draft||(UI.draft=blank());
- if(UI.done){var j=UI.done,cs=j.caseId;return'<section class="panel done"><h2>'+esc(j.obs.id)+' submitted and locked</h2><p class="lead">'+esc(j.msg)+'</p><div class="row">'+(cs?'<button class="btn primary" data-act="open" data-id="'+esc(cs)+'">Open case '+esc(cs)+'</button>':'')+(j.obs.type==='Calibration'?'<button class="btn primary" data-act="go" data-v="q">See calibrator consistency</button>':'<button class="btn'+(cs?'':' primary')+'" data-act="tofb">Send anonymous feedback request</button>')+'<button class="btn" data-act="go" data-v="board">See the Currency Board</button></div></section>'+foot()}
- var cal=calType(d),q=D.ieqs.filter(function(x){return x.id===d.ieq})[0],seg=function(k){var v=d.rate[k];return'<div class="seg" role="group" aria-label="Rating">'+['4','3','2','1','NO'].map(function(b){return'<button class="'+(b==='2'||b==='1'?'nm':b==='3'||b==='4'?'met':'')+'" data-act="rate" data-k="'+k+'" data-val="'+b+'" aria-pressed="'+(v===b)+'">'+b+'</button>'}).join('')+'</div>'};
+ if(UI.done){var j=UI.done,cs=j.caseId;return'<section class="panel done"><h2>'+esc(j.obs.id)+' submitted and locked</h2><p class="lead">'+esc(j.msg)+'</p><div class="row">'+(cs?'<button class="btn primary" data-act="open" data-id="'+esc(cs)+'">Open case '+esc(cs)+'</button>':'')+(j.obs.type==='Calibration'?'<button class="btn primary" data-act="go" data-v="q">See calibrator consistency</button>':IEQS.indexOf(j.obs.ieq)<0?'':'<button class="btn'+(cs?'':' primary')+'" data-act="tofb">Send anonymous feedback request</button>')+'<button class="btn" data-act="go" data-v="board">See the Currency Board</button></div></section>'+foot()}
+ var cal=calType(d),cr=credit24(d),q=D.ieqs.filter(function(x){return x.id===d.ieq})[0],seg=function(k){var v=d.rate[k];return'<div class="seg" role="group" aria-label="Rating">'+['4','3','2','1','NO'].map(function(b){return'<button class="'+(b==='2'||b==='1'?'nm':b==='3'||b==='4'?'met':'')+'" data-act="rate" data-k="'+k+'" data-val="'+b+'" aria-pressed="'+(v===b)+'">'+b+'</button>'}).join('')+'</div>'};
  return'<section class="panel"><div class="row spread"><h2>Instructor QA Observation Record</h2><button class="btn small" data-act="fill">Fill sample observation</button></div>'+
- '<div class="fields">'+(cal?'<label class="f">Common evidence<select id="f-ie" disabled><option>Sample session, current quarter</option></select></label>':'<label class="f">I/E observed<select id="f-ie" data-d="ie"><option value="">Choose</option>'+D.roster.map(function(r){return'<option'+(r.id===d.ie?' selected':'')+'>'+esc(r.id)+'</option>'}).join('')+'</select></label>')+
- '<label class="f">IEQ<select id="f-ieq" data-d="ieq" data-rerender="1">'+opt(IEQS,d.ieq)+'</select></label>'+
+ '<div class="fields">'+(cal?'<label class="f">Common evidence<select id="f-ie" disabled><option>Sample session, current quarter</option></select></label>':'<label class="f">I/E observed<select id="f-ie" data-d="ie" data-rerender="1"><option value="">Choose</option>'+D.roster.map(function(r){return'<option'+(r.id===d.ie?' selected':'')+'>'+esc(r.id)+'</option>'}).join('')+'</select></label>')+
+ (d.prog==='N&O'&&!cal?'<label class="f">Evaluator<select id="f-role" data-d="role" data-rerender="1">'+opt(ROLES,d.role)+'</select></label>':'')+(d.role==='IEQ'||cal?'<label class="f">IEQ<select id="f-ieq" data-d="ieq" data-rerender="1">'+opt(IEQS,d.ieq)+'</select></label>':'')+
  '<label class="f">Curriculum<select id="f-prog" data-d="prog" data-rerender="1">'+opt(PROGS,d.prog)+'</select></label><label class="f">Observation type<select id="f-type" data-d="type" data-rerender="1">'+opt(typesFor(d.prog),d.type)+'</select></label>'+
- '<label class="f">Event<select id="f-act" data-d="act">'+opt(actsFor(d.prog),d.act)+'</select></label>'+
- '<label class="f">Environment<select id="f-env" data-d="env">'+opt(ENV,d.env)+'</select></label></div>'+
- (q&&!ieqCur(q)?'<p style="margin:10px 0 0"><span class="pill p-bad">Flag</span> '+esc(q.id)+' is past the annual calibration date.</p>':'')+
+ '<label class="f">Event<select id="f-act" data-d="act" data-rerender="1">'+opt(actsFor(d.prog),d.act)+'</select></label>'+
+ '<label class="f">Environment<select id="f-env" data-d="env" data-rerender="1">'+opt(ENV,d.env)+'</select></label></div>'+
+ (cr?'<p class="notice" style="margin:10px 0 0" id="credit"><span class="pill '+(cr.ok?'p-good':'p-gold')+'">24-month</span> '+esc(cr.why)+'</p>':'')+(q&&!ieqCur(q)&&(cal||d.role==='IEQ')?'<p style="margin:10px 0 0"><span class="pill p-bad">Flag</span> '+esc(q.id)+' is past the annual calibration date.</p>':'')+
  (cal?'<p class="notice" style="margin:10px 0 0">Calibration: each IEQ rates the same common evidence on their own. It updates evaluator agreement and does not open a case or reset an instructor’s clock.</p>':'')+'</section>'+
  '<section class="panel"><h2>Category ratings</h2><p class="lead">4 Exceeds · 3 Meets · 2 Needs Improvement · 1 Unsatisfactory · NO Not Observed. Rate only what you adequately observed.</p>'+
  CATS.map(function(c){var v=d.rate[c[0]];return'<div class="item"><div><b>'+esc(c[1])+'</b><div class="notice">'+esc(c[2])+'</div></div>'+seg(c[0])+(v==='2'||v==='1'?citeHtml(c[0],c[1]):'')+'</div>'}).join('')+'</section>'+
@@ -310,18 +345,19 @@ function vCal(){var d=UI.draft||(UI.draft=blank());
  '<label class="check" style="margin-top:12px"><input type="checkbox" id="f-esc" data-act="escal"'+(d.esc?' checked':'')+'>Immediate escalation required</label>'+
  '<div class="fields"><label class="f">Strengths observed<textarea id="f-str" data-d="str">'+esc(d.str)+'</textarea></label><label class="f">Coaching notes<textarea id="f-dev" data-d="dev">'+esc(d.dev)+'</textarea></label><label class="f">Instructor comments<textarea id="f-com" data-d="com">'+esc(d.com)+'</textarea></label></div></section>'+
  '<div class="gate" id="gate">'+gateHtml()+'</div>'+foot()}
-function submit(){var d=UI.draft;if(!gate().ok)return;var t=iso(today());
+function submit(){var d=UI.draft;if(!gate().ok)return;var t=iso(today()),cr=credit24(d),ev=d.role==='IEQ'||calType(d)?d.ieq:d.role;
  var find=[];CATS.forEach(function(c){var v=d.rate[c[0]];if(v==='2'||v==='1'){var x=d.cite[c[0]];find.push({code:x.code,behavior:x.behavior.trim(),source:x.source,ref:x.ref.trim(),cons:x.cons.trim(),sev:x.sev,cause:x.cause||'Individual',rec:!calType(d)&&repeatOf(d.ie,x.code),rating:v})}});
- var o={id:'OBS-'+String(D.seq.o++).padStart(4,'0'),prog:d.prog,date:t,ie:calType(d)?'Common evidence':d.ie,ieq:d.ieq,type:d.type,act:d.act,env:d.env,rate:d.rate,overall:d.overall,find:calType(d)?[]:find,str:d.str.trim(),dev:d.dev.trim(),com:d.com.trim(),esc:d.esc};
+ var o={id:'OBS-'+String(D.seq.o++).padStart(4,'0'),prog:d.prog,date:t,ie:calType(d)?'Common evidence':d.ie,ieq:ev,credit24:!!(cr&&cr.ok),type:d.type,act:d.act,env:d.env,rate:d.rate,overall:d.overall,find:calType(d)?[]:find,str:d.str.trim(),dev:d.dev.trim(),com:d.com.trim(),esc:d.esc};
  D.obs.push(o);var msg='',cid=null;
  if(calType(d)){D.norm[d.ieq]=d.rate;D.ieqs.forEach(function(q){if(q.id===d.ieq)q.cal=t});msg=d.ieq+' calibration recorded. Evaluator agreement is updated, and the annual calibration date is reset.'}
  else{if(RESET.indexOf(d.type)>=0){D.roster.forEach(function(r){if(r.id===d.ie)r.last=t});msg=d.ie+' is reset to a fresh 12 months, due '+fmt(iso(addM(t,12)))+'. '}else msg=d.type+' recorded. The 12-month clock does not change. ';
+  if(cr){if(cr.ok){D.roster.forEach(function(r){if(r.id===d.ie){r.biDue=nextBi(r);msg+='24-month observation credited, next due '+monYr(parse(r.biDue))+'. '}})}else msg+=cr.why+' '}
   if(find.length){var one=find.some(function(f){return f.rating==='1'}),two=find.filter(function(f){return f.rating==='2'}).length,rep=find.some(function(f){return f.rec}),hi=find.some(function(f){return f.sev==='High'}),lv=one||hi?3:(two>1||rep?2:1);
    cid='QA-'+String(today().getFullYear()).slice(2)+'-'+String(D.seq.c++).padStart(3,'0');
    var c={id:cid,obs:o.id,prog:o.prog,ie:o.ie,ieq:o.ieq,find:find,level:lv,cause:find[0].cause,root:'',interim:'No restriction',actions:[],criteria:'',method:'',verifier:'',vdate:'',vresult:'',vevidence:'',authority:'',rationale:'',comments:'',ack:false,opened:t,stepAt:t,status:'Finding Under Review',step:2,monitor:'',closed:'',log:[{at:now(),by:o.ieq,txt:'Finding recorded and instructor debriefed from '+o.id}]};
    if(o.esc)log(c,o.ieq,'Immediate escalation flagged to the designated manager');D.cases.unshift(c);msg+='Case '+cid+' opened with suggested Level '+lv+'. Triage is due '+fmt(iso(addBD(t,2)))+'.'}
   else msg+='No finding, so no case was opened.'}
- save();UI.done={obs:o,msg:msg,caseId:cid};UI.fbFrom=o.ieq;UI.fbDraft=null;UI.fbDone=false;UI.draft=null;render()}
+ save();UI.done={obs:o,msg:msg,caseId:cid};UI.fbFrom=IEQS.indexOf(o.ieq)>=0?o.ieq:null;UI.fbDraft=null;UI.fbDone=false;UI.draft=null;render()}
 function vCases(){var open=D.cases.filter(isOpen),f=flags(),o=open.filter(overdue).length;
  return'<div class="stats"><div class="stat"><b>'+open.length+'</b><span>Open cases</span></div><div class="stat" style="--stripe:var(--bad)"><b>'+o+'</b><span>Overdue</span></div><div class="stat" style="--stripe:var(--warn)"><b>'+open.filter(function(c){return c.level>=2}).length+'</b><span>Level 2 or higher</span></div><div class="stat" style="--stripe:var(--gold)"><b>'+D.cases.filter(function(c){return c.cause==='Systemic'}).length+'</b><span>Systemic cases</span></div></div>'+
  (f.length?'<section class="panel"><h2>Automated flags</h2>'+f.map(function(x){return'<p style="margin:8px 0"><span class="pill '+x[0]+'">'+x[1]+'</span> '+esc(x[2])+(x[3]?' <button class="btn small" data-act="open" data-id="'+x[3]+'">Open</button>':'')+'</p>'}).join('')+'</section>':'')+
@@ -406,6 +442,7 @@ document.addEventListener('click',function(ev){var b=ev.target.closest('[data-ac
  else if(a==='overall'){d.overall=b.dataset.val;render(true)}
  else if(a==='tonote'){var k2=b.dataset.k,c=d.cite[k2]||{};d.rate[k2]='3';if((c.behavior||'').trim())d.dev=(d.dev?d.dev+'\n':'')+c.behavior.trim();delete d.cite[k2];render(true)}
  else if(a==='escal'){d.esc=b.checked}
+ else if(a==='apd'){D.ieqs.forEach(function(q){if(q.id===b.dataset.id)q.apd=b.checked});save();render(true)}
  else if(a==='submit')submit();
  else if(a==='tofb'){UI.done=null;UI.view='fb';render()}
  else if(a==='fbfill'){fbKeys().forEach(function(q){UI.fbDraft.a[q[0]]='A'});render(true)}
@@ -415,7 +452,7 @@ document.addEventListener('click',function(ev){var b=ev.target.closest('[data-ac
  else if(a==='reset'){if(!UI.arm){UI.arm=true;render(true)}else{UI.arm=false;D=seed();save();UI.draft=null;UI.done=null;UI.fbDraft=null;UI.fbDone=false;UI.cid=null;UI.view='how';render()}}
 });
 function onField(ev){var el=ev.target,d=UI.draft;
- if(el.dataset.d&&d){d[el.dataset.d]=el.value;if(el.dataset.d==='prog'){if(typesFor(d.prog).indexOf(d.type)<0)d.type=typesFor(d.prog)[0];if(actsFor(d.prog).indexOf(d.act)<0)d.act=actsFor(d.prog)[0]}if(el.dataset.rerender&&ev.type==='change')render(true);else refreshGate()}
+ if(el.dataset.d&&d){d[el.dataset.d]=el.value;if(el.dataset.d==='prog'){if(typesFor(d.prog).indexOf(d.type)<0)d.type=typesFor(d.prog)[0];if(actsFor(d.prog).indexOf(d.act)<0)d.act=actsFor(d.prog)[0];if(d.prog==='AQP')d.role='IEQ'}if(el.dataset.d==='type'&&calType(d))d.role='IEQ';if(el.dataset.rerender&&ev.type==='change')render(true);else refreshGate()}
  else if(el.dataset.c&&d){(d.cite[el.dataset.k]=d.cite[el.dataset.k]||{})[el.dataset.c]=el.value;refreshGate()}
  else if(el.dataset.fb&&UI.fbDraft){UI.fbDraft[el.dataset.fb]=el.value}}
 document.addEventListener('input',onField);document.addEventListener('change',onField);
